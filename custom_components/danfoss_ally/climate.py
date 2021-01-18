@@ -92,7 +92,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._ally = ally
         self._device = ally.devices[device_id]
         self._device_id = device_id
-        super().__init__(name, device_id)
+        super().__init__(name, device_id, "climate")
 
         _LOGGER.debug(
             "Device_id: %s --- Device: %s",
