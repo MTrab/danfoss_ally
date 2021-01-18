@@ -1,5 +1,6 @@
 {
-    "domains": ["danfoss_ally", "binary_sensor", "climate", "sensor"],
+    "domain": "danfoss_ally"
+    "domains": ["binary_sensor", "climate", "sensor"],
     "name": "Danfoss Ally",
     "documentation": "https://github.com/MTrab/danfoss_ally/blob/master/README.md",
     "issue_tracker": "https://github.com/MTrab/danfoss_ally/issues",
