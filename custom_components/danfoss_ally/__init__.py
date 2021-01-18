@@ -100,11 +100,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         UPDATE_LISTENER: update_listener,
     }
 
-    hass.data[DOMAIN][entry.entry_id] = {
-        DATA: allyconnector,
-        UPDATE_LISTENER: update_listener,
-    }
-
     for component in ALLY_COMPONENTS:
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(entry, component)
@@ -127,6 +122,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
     )
 
+    _LOGGER.debug(hass.data[DOMAIN][entry.entry_id])
+    
     hass.data[DOMAIN][entry.entry_id][UPDATE_TRACK]()
     hass.data[DOMAIN][entry.entry_id][UPDATE_LISTENER]()
 
