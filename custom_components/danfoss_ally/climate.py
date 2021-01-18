@@ -94,12 +94,12 @@ class AllyClimate(AllyClimateEntity, ClimateEntity):
         """Initialize Danfoss Ally climate entity."""
         self._ally = ally
         self._device = ally.devices[device_id]
-        self._id = device_id
+        self._device_id = device_id
         super().__init__(name, device_id)
 
         _LOGGER.debug(
             "Device_id: %s --- Device: %s",
-            self._id,
+            self._device_id,
             self._device
         )
 
@@ -211,7 +211,7 @@ class AllyClimate(AllyClimateEntity, ClimateEntity):
         if temperature is None:
             return
 
-        self._ally.setTemperature(self._id, temperature)
+        self._ally.setTemperature(self._device_id, temperature)
 
     @property
     def available(self):
@@ -233,9 +233,9 @@ class AllyClimate(AllyClimateEntity, ClimateEntity):
         """Load data."""
         _LOGGER.debug(
             "Loading new climate data for device %s",
-            self._id
+            self._device_id
         )
-        self._device = self._ally.devices[self._id]
+        self._device = self._ally.devices[self._device_id]
 
     @callback
     def _async_update_callback(self):
