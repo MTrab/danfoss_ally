@@ -35,3 +35,9 @@ First of all you need to go at get an api key and secret
 * Enter API key and secret
 
 Voila
+
+## Known issues
+
+* Climate and sensor entities are not grouped correctly under integrations - purely a visual issue and not functional
+* Inconsistency between API and app, devices are not updating correctly between API and app and sometimes the devices renders offline in the app - this is a Danfoss issue and not this integration
+* Floorheating modules (Icon) are not reporting the actual room temperature in the API - this is a Danfoss issue and not this integration
