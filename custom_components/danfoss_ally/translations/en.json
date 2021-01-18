@@ -1,6 +1,5 @@
 {
     "config": {
-        "title": "Danfoss Ally",
         "abort": {
             "already_configured": "Device is already configured"
         },
