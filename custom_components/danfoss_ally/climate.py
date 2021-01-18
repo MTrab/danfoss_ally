@@ -1,17 +1,14 @@
 """Support for Danfoss Ally thermostats."""
 import logging
 
-import voluptuous as vol
-
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
     HVAC_MODE_HEAT,
-    SUPPORT_PRESET_MODE,
     SUPPORT_TARGET_TEMPERATURE,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_TEMPERATURE, PRECISION_TENTHS, TEMP_CELSIUS
+from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -21,7 +18,7 @@ from .const import (
     DOMAIN,
     SIGNAL_ALLY_UPDATE_RECEIVED,
 )
-from .entity import AllyClimateEntity
+from .entity import AllyDeviceEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,7 +74,7 @@ def create_climate_entity(ally, name: str, device_id: str):
     return entity
 
 
-class AllyClimate(AllyClimateEntity, ClimateEntity):
+class AllyClimate(AllyDeviceEntity, ClimateEntity):
     """Representation of a Danfoss Ally climate entity."""
 
     def __init__(

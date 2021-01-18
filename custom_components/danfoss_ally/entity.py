@@ -36,7 +36,7 @@ class AllyClimateEntity(Entity):
     def __init__(self, name, device_id):
         """Initialize a Danfoss Ally zone."""
         super().__init__()
-        self._device_id = f"{name}_{device_id}"
+        self._device_id = device_id
         self._name = name
 
     @property
