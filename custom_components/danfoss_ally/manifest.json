@@ -1,5 +1,5 @@
 {
-    "domain": "danfoss_ally"
+    "domain": "danfoss_ally",
     "domains": ["binary_sensor", "climate", "sensor"],
     "name": "Danfoss Ally",
     "documentation": "https://github.com/MTrab/danfoss_ally/blob/master/README.md",
@@ -8,5 +8,5 @@
     "codeowners": ["@MTrab"],
     "config_flow": true,
     "iot_class": ["Cloud Polling"]
-  }
+}
   
