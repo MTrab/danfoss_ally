@@ -10,6 +10,7 @@ This is a custom component for Home Assistant to integrate the Danfoss Ally devi
 #### HACS
 
 - Ensure that HACS is installed.
+- Add this repository as a custom repository
 - Search for and install the "Danfoss Ally" integration.
 - Restart Home Assistant.
 
