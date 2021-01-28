@@ -24,42 +24,15 @@ async def validate_input(hass: core.HomeAssistant, data):
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
 
-    #_LOGGER.warning("Danfoss Ally creds: %s %s",data[CONF_KEY], data[CONF_SECRET])        
     ally = DanfossAlly()
-    auth = await ally.initialize(data[CONF_KEY], data[CONF_SECRET])
-
+    auth = await hass.async_add_executor_job(
+        ally.initialize,
+        data[CONF_KEY],
+        data[CONF_SECRET]
+    )
     if not auth:
         raise InvalidAuth
 
-    #_LOGGER.warning("Adding Danfoss Ally")        
-    # try:
-    #     ally = await hass.async_add_executor_job(
-    #         DanfossAlly
-    #     )
-    #     ally = await hass.async_add_executor_job(
-    #         ally.initialize,
-    #         data[CONF_KEY],
-    #         data[CONF_SECRET]
-    #     )
-    # except KeyError as ex:
-    #     raise InvalidAuth from ex
-    # except RuntimeError as ex:
-    #     raise CannotConnect from ex
-    # except requests.exceptions.HTTPError as ex:
-    #     if ex.response.status_code > 400 and ex.response.status_code < 500:
-    #         raise InvalidAuth from ex
-    #     raise CannotConnect from ex
-
-    # if "homes" not in tado_me or len(tado_me["homes"]) == 0:
-    #     raise NoHomes
-
-    # #home = tado_me["homes"][0]
-    # #unique_id = str(home["id"])
-    # #name = home["name"]
-    #unique_id = "allytest123"
-    # name = "Ally Test"
-
-    # return {"title": name, UNIQUE_ID: unique_id}
     return {"title": f"Danfoss Ally"}
 
 
@@ -75,9 +48,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             try:
-                #metering_point = user_input["metering_point"]
-                info = f"Danfoss Ally"
-                return self.async_create_entry(title=info, data=user_input)
+                validated = await validate_input(self.hass, user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -85,6 +56,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
+
+            if "base" not in errors:
+                return self.async_create_entry(
+                    title=validated['title'],
+                    data=user_input
+                )
 
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
