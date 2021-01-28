@@ -5,8 +5,6 @@
 
 This is a custom component for Home Assistant to integrate the Danfoss Ally and Icon devices via Danfoss Ally gateway
 
-**This is under development. use at own risk!**
-
 ### Installation:
 
 #### HACS
