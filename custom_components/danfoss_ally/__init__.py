@@ -84,6 +84,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
         return False
     
+    if not allyconnector.authorized:
+        _LOGGER.error("Error authorizing")
+        return False
+        
     await hass.async_add_executor_job(allyconnector.update)
     
     update_track = async_track_time_interval(
@@ -140,12 +144,15 @@ class AllyConnector:
         self._key = key
         self._secret = secret
         self.ally = DanfossAlly()
+        self._authorized = False
 
     def setup(self):
         auth = self.ally.initialize(
             self._key,
             self._secret
         )
+
+        self._authorized = auth
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def update(self, now=None):
@@ -168,3 +175,8 @@ class AllyConnector:
     def setTemperature(self, device_id: str, temperature: float):
         """Set temperature for device_id."""
         self.ally.setTemperature(device_id, temperature)
+
+    @property
+    def authorized(self) -> bool:
+        """Return authorized state."""
+        return self._authorized
