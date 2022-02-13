@@ -13,6 +13,10 @@ from homeassistant.helpers.dispatcher import dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import Throttle
 from pydanfossally import DanfossAlly
+from pydanfossally.const import (
+    THERMOSTAT_MODE_HEAT,
+    THERMOSTAT_MODE_OFF
+)
 
 from .const import (
     CONF_KEY,
@@ -175,6 +179,16 @@ class AllyConnector:
     def setTemperature(self, device_id: str, temperature: float):
         """Set temperature for device_id."""
         self.ally.setTemperature(device_id, temperature)
+
+    def setMode(self, device_id: str, mode: str):
+        """Set operating mode for device_id."""
+
+        if mode == 'off':
+            set_mode = THERMOSTAT_MODE_OFF
+        elif mode == 'heat':
+            set_mode = THERMOSTAT_MODE_HEAT
+
+        self.ally.setMode(device_id, set_mode)
 
     @property
     def authorized(self) -> bool:
