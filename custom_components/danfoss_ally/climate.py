@@ -3,8 +3,10 @@ import logging
 
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
+    CURRENT_HVAC_AUTO,
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_OFF,
+    HVAC_MODE_AUTO,
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
     SUPPORT_TARGET_TEMPERATURE,
@@ -59,7 +61,7 @@ def create_climate_entity(ally, name: str, device_id: str):
     """Create a Danfoss Ally climate entity."""
 
     support_flags = SUPPORT_TARGET_TEMPERATURE
-    supported_hvac_modes = [HVAC_MODE_HEAT, HVAC_MODE_OFF]
+    supported_hvac_modes = [HVAC_MODE_AUTO, HVAC_MODE_HEAT, HVAC_MODE_OFF]
     heat_temperatures = None
     heat_min_temp = 4.5
     heat_max_temp = 35.0
