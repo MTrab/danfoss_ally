@@ -4,8 +4,12 @@ import logging
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
+    HVAC_MODE_AUTO,
     HVAC_MODE_HEAT,
     SUPPORT_TARGET_TEMPERATURE,
+    SUPPORT_PRESET_MODE,
+    PRESET_HOME,
+    PRESET_AWAY,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
@@ -19,6 +23,9 @@ from .const import (
     SIGNAL_ALLY_UPDATE_RECEIVED,
 )
 from .entity import AllyDeviceEntity
+
+# Custom preset for pause mode
+PRESET_PAUSE = "pause"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,8 +61,8 @@ def _generate_entities(ally):
 def create_climate_entity(ally, name: str, device_id: str):
     """Create a Danfoss Ally climate entity."""
 
-    support_flags = SUPPORT_TARGET_TEMPERATURE
-    supported_hvac_modes = [HVAC_MODE_HEAT]
+    support_flags = SUPPORT_TARGET_TEMPERATURE | SUPPORT_PRESET_MODE
+    supported_hvac_modes = [HVAC_MODE_AUTO, HVAC_MODE_HEAT]
     heat_temperatures = None
     heat_min_temp = 4.5
     heat_max_temp = 35.0
@@ -103,6 +110,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._unique_id = f"climate_{device_id}_ally"
 
         self._supported_hvac_modes = supported_hvac_modes
+        self._supported_preset_modes = [PRESET_HOME, PRESET_AWAY, PRESET_PAUSE]
         self._support_flags = support_flags
 
         self._available = False
@@ -171,7 +179,23 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         """Return hvac operation ie. heat, cool mode.
         Need to be one of HVAC_MODE_*.
         """
-        return HVAC_MODE_HEAT
+        if 'mode' in self._device:
+            if self._device['mode'] == 'at_home' or self._device['mode'] == 'leaving_home':
+                return HVAC_MODE_AUTO
+            elif self._device['mode'] == 'manual':
+                return HVAC_MODE_HEAT
+
+    @property
+    def preset_mode(self):
+        """The current active preset.
+        """
+        if 'mode' in self._device:
+            if self._device['mode'] == 'at_home':
+                return PRESET_HOME
+            elif self._device['mode'] == 'leaving_home':
+                return PRESET_AWAY
+            elif self._device['mode'] == 'pause':
+                return PRESET_PAUSE
 
     @property
     def hvac_modes(self):
@@ -179,6 +203,12 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         Need to be a subset of HVAC_MODES.
         """
         return self._supported_hvac_modes
+
+    @property
+    def preset_modes(self):
+        """Return the list of available preset modes.
+        """
+        return self._supported_preset_modes
 
     @property
     def hvac_action(self):
