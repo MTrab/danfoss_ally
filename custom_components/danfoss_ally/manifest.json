@@ -3,7 +3,7 @@
     "name": "Danfoss Ally",
     "documentation": "https://github.com/MTrab/danfoss_ally/blob/master/README.md",
     "issue_tracker": "https://github.com/MTrab/danfoss_ally/issues",
-    "requirements": ["pydanfossally==0.0.23"],
+    "requirements": ["pydanfossally==0.0.25"],
     "codeowners": ["@MTrab"],
     "version": "1.0.4",
     "config_flow": true,
