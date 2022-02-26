@@ -32,7 +32,7 @@ First of all you need to go at get an api key and secret
 * Click create
 * Save your key and secret - these will be used when adding the integration
 * Go to Home Assistant > Settings > Integrations
-* Add Danfoss Ally integration
+* Add Danfoss Ally integration (If it doesn't show, try CTRL+F5 to force a refresh of the page)
 * Enter API key and secret
 
 Voila
