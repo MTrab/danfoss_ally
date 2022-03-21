@@ -3,13 +3,13 @@ import logging
 
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
-    CURRENT_HVAC_AUTO,
     CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_OFF,
     HVAC_MODE_AUTO,
     HVAC_MODE_HEAT,
-    HVAC_MODE_OFF,
     SUPPORT_TARGET_TEMPERATURE,
+    SUPPORT_PRESET_MODE,
+    PRESET_HOME,
+    PRESET_AWAY,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
@@ -19,12 +19,13 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import (
     DATA,
-    DANFOSS_TO_HA_HVAC_MODE_MAP,
     DOMAIN,
-    HA_TO_DANFOSS_HVAC_MODE_MAP,
     SIGNAL_ALLY_UPDATE_RECEIVED,
 )
 from .entity import AllyDeviceEntity
+
+# Custom preset for pause mode
+PRESET_PAUSE = "pause"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,8 +61,8 @@ def _generate_entities(ally):
 def create_climate_entity(ally, name: str, device_id: str):
     """Create a Danfoss Ally climate entity."""
 
-    support_flags = SUPPORT_TARGET_TEMPERATURE
-    supported_hvac_modes = [HVAC_MODE_AUTO, HVAC_MODE_HEAT, HVAC_MODE_OFF]
+    support_flags = SUPPORT_TARGET_TEMPERATURE | SUPPORT_PRESET_MODE
+    supported_hvac_modes = [HVAC_MODE_AUTO, HVAC_MODE_HEAT]
     heat_temperatures = None
     heat_min_temp = 4.5
     heat_max_temp = 35.0
@@ -109,6 +110,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._unique_id = f"climate_{device_id}_ally"
 
         self._supported_hvac_modes = supported_hvac_modes
+        self._supported_preset_modes = [PRESET_HOME, PRESET_AWAY, PRESET_PAUSE]
         self._support_flags = support_flags
 
         self._available = False
@@ -177,7 +179,23 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         """Return hvac operation ie. heat, cool mode.
         Need to be one of HVAC_MODE_*.
         """
-        return DANFOSS_TO_HA_HVAC_MODE_MAP.get(self._device["mode"], HVAC_MODE_OFF)
+        if 'mode' in self._device:
+            if self._device['mode'] == 'at_home' or self._device['mode'] == 'leaving_home':
+                return HVAC_MODE_AUTO
+            elif self._device['mode'] == 'manual':
+                return HVAC_MODE_HEAT
+
+    @property
+    def preset_mode(self):
+        """The current active preset.
+        """
+        if 'mode' in self._device:
+            if self._device['mode'] == 'at_home':
+                return PRESET_HOME
+            elif self._device['mode'] == 'leaving_home':
+                return PRESET_AWAY
+            elif self._device['mode'] == 'pause':
+                return PRESET_PAUSE
 
     @property
     def hvac_modes(self):
@@ -187,13 +205,16 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         return self._supported_hvac_modes
 
     @property
+    def preset_modes(self):
+        """Return the list of available preset modes.
+        """
+        return self._supported_preset_modes
+
+    @property
     def hvac_action(self):
         """Return the current running hvac operation if supported.
         Need to be one of CURRENT_HVAC_*.
         """
-        if 'mode' in self._device:
-            if 'mode' == 'pause':
-                return CURRENT_HVAC_OFF
         return CURRENT_HVAC_HEAT
 
     @property
@@ -218,10 +239,6 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             return
 
         self._ally.setTemperature(self._device_id, temperature)
-
-    def set_hvac_mode(self, hvac_mode):
-        """Set new target hvac mode."""
-        self._ally.setMode(self._device_id, HA_TO_DANFOSS_HVAC_MODE_MAP[hvac_mode])
 
     @property
     def available(self):
@@ -252,3 +269,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         """Load data and update state."""
         self._async_update_data()
         self.async_write_ha_state()
+
+    def set_hvac_mode(self, hvac_mode):
+        """Set new target hvac mode."""
+        #Currently unsupported by API
