@@ -176,6 +176,10 @@ class AllyConnector:
         """Set temperature for device_id."""
         self.ally.setTemperature(device_id, temperature)
 
+    def setMode(self, device_id: str, mode: str):
+        """Set mode for device_id."""
+        self.ally.setMode(device_id, mode)
+
     @property
     def authorized(self) -> bool:
         """Return authorized state."""
