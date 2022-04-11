@@ -59,7 +59,12 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._unique_id = f"climate_{device_id}_ally"
 
         self._supported_hvac_modes = supported_hvac_modes
-        self._supported_preset_modes = [PRESET_HOME, PRESET_AWAY, PRESET_PAUSE, PRESET_MANUAL]
+        self._supported_preset_modes = [
+            PRESET_HOME,
+            PRESET_AWAY,
+            PRESET_PAUSE,
+            PRESET_MANUAL,
+        ]
         self._support_flags = support_flags
 
         self._available = False
@@ -178,7 +183,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         if mode is None:
             return
 
-        self._ally.setMode(self._device_id, mode)
+        self._ally.set_mode(self._device_id, mode)
 
     @property
     def hvac_action(self):
@@ -212,6 +217,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         if temperature is None:
             return
 
+        self._ally.set_mode(self._device_id, "manual")
         self._ally.set_temperature(self._device_id, temperature)
 
     @property
