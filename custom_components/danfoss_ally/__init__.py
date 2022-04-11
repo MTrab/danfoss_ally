@@ -66,6 +66,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
     return True
 
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Danfoss Ally from a config entry."""
 
@@ -77,19 +78,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         await hass.async_add_executor_job(allyconnector.setup)
     except TimeoutError:
         _LOGGER.error("Timeout connecting to Danfoss Ally")
-        raise ConfigEntryNotReady
-    except:
+        raise ConfigEntryNotReady  # pylint: disable=raise-missing-from
+    except:  # pylint: disable=bare-except
         _LOGGER.error(
             "Something went horrible wrong when communicating with Danfoss Ally"
         )
         return False
-    
+
     if not allyconnector.authorized:
         _LOGGER.error("Error authorizing")
         return False
-        
+
     await hass.async_add_executor_job(allyconnector.update)
-    
+
     update_track = async_track_time_interval(
         hass,
         lambda now: allyconnector.update(),
@@ -97,7 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     )
 
     update_listener = entry.add_update_listener(_async_update_listener)
-    
+
     hass.data[DOMAIN][entry.entry_id] = {
         DATA: allyconnector,
         UPDATE_TRACK: update_track,
@@ -111,10 +112,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     return True
 
+
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry):
     """Handle options update."""
     await hass.config_entries.async_reload(entry.entry_id)
-    
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
     unload_ok = all(
@@ -146,25 +149,19 @@ class AllyConnector:
         self.ally = DanfossAlly()
         self._authorized = False
 
-    def setup(self):
-        auth = self.ally.initialize(
-            self._key,
-            self._secret
-        )
+    def setup(self) -> None:
+        """Setup API connection."""
+        auth = self.ally.initialize(self._key, self._secret)
 
         self._authorized = auth
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    def update(self, now=None):
+    def update(self) -> None:
+        """Update API data."""
         _LOGGER.debug("Updating Danfoss Ally devices")
-        _LOGGER.debug("Token: %s", self.ally._token)
         self.ally.getDeviceList()
-        for device in self.ally.devices:
-            _LOGGER.debug(
-                "%s: %s",
-                device,
-                self.ally.devices[device]
-            )
+        for device in self.ally.devices:  # pylint: disable=consider-using-dict-items
+            _LOGGER.debug("%s: %s", device, self.ally.devices[device])
         dispatcher_send(self.hass, SIGNAL_ALLY_UPDATE_RECEIVED)
 
     @property
@@ -172,11 +169,11 @@ class AllyConnector:
         """Return device list from API."""
         return self.ally.devices
 
-    def setTemperature(self, device_id: str, temperature: float):
+    def set_temperature(self, device_id: str, temperature: float) -> None:
         """Set temperature for device_id."""
         self.ally.setTemperature(device_id, temperature)
 
-    def setMode(self, device_id: str, mode: str):
+    def set_mode(self, device_id: str, mode: str) -> None:
         """Set operating mode for device_id."""
         self.ally.setMode(device_id, mode)
 

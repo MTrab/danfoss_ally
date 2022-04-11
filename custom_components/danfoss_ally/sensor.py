@@ -7,12 +7,10 @@ from homeassistant.const import (
     DEVICE_CLASS_HUMIDITY,
     PERCENTAGE,
     TEMP_CELSIUS,
-
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import Entity
 
 from .const import (
     DATA,
@@ -33,16 +31,15 @@ async def async_setup_entry(
     entities = []
 
     for device in ally.devices:
-        for sensor_type in ['battery', 'temperature', 'humidity']:
+        for sensor_type in ["battery", "temperature", "humidity"]:
             if sensor_type in ally.devices[device]:
-                _LOGGER.debug(f"Found {sensor_type} sensor for {ally.devices[device]['name']}")
+                _LOGGER.debug(
+                    "Found %s sensor for %s", sensor_type, ally.devices[device]["name"]
+                )
                 entities.extend(
                     [
                         AllySensor(
-                            ally,
-                            ally.devices[device]["name"],
-                            device,
-                            sensor_type
+                            ally, ally.devices[device]["name"], device, sensor_type
                         )
                     ]
                 )
@@ -62,11 +59,7 @@ class AllySensor(AllyDeviceEntity):
         self._type = device_type
         super().__init__(name, device_id, device_type)
 
-        _LOGGER.debug(
-            "Device_id: %s --- Device: %s",
-            self._device_id,
-            self._device
-        )
+        _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
 
         self._type = device_type
 
@@ -76,11 +69,11 @@ class AllySensor(AllyDeviceEntity):
         self._state_attributes = None
 
         if self._type == "battery":
-            self._state = self._device['battery']
+            self._state = self._device["battery"]
         elif self._type == "temperature":
-            self._state = self._device['temperature']
+            self._state = self._device["temperature"]
         elif self._type == "humidity":
-            self._state = self._device['humidity']
+            self._state = self._device["humidity"]
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
@@ -144,15 +137,12 @@ class AllySensor(AllyDeviceEntity):
     @callback
     def _async_update_data(self):
         """Load data."""
-        _LOGGER.debug(
-            "Loading new sensor data for device %s",
-            self._device_id
-        )
+        _LOGGER.debug("Loading new sensor data for device %s", self._device_id)
         self._device = self._ally.devices[self._device_id]
 
         if self._type == "battery":
-            self._state = self._device['battery']
+            self._state = self._device["battery"]
         elif self._type == "temperature":
-            self._state = self._device['temperature']
+            self._state = self._device["temperature"]
         elif self._type == "humidity":
-            self._state = self._device['humidity']
+            self._state = self._device["humidity"]

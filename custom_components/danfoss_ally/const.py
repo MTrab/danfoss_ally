@@ -1,16 +1,14 @@
+"""Danfoss_ally consts."""
 from homeassistant.components.climate.const import (
-    CURRENT_HVAC_AUTO,
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_OFF,
     HVAC_MODE_AUTO,
     HVAC_MODE_HEAT,
-    HVAC_MODE_OFF
+    HVAC_MODE_OFF,
 )
 
-from pydanfossally.const import (
+from pydanfossally.const import (  # pylint: disable=no-name-in-module
     THERMOSTAT_MODE_AUTO,
     THERMOSTAT_MODE_MANUAL,
-    THERMOSTAT_MODE_OFF
+    THERMOSTAT_MODE_OFF,
 )
 
 HA_TO_DANFOSS_HVAC_MODE_MAP = {
