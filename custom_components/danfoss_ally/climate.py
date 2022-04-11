@@ -4,6 +4,7 @@ import logging
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
+    CURRENT_HVAC_IDLE,
     HVAC_MODE_AUTO,
     HVAC_MODE_HEAT,
     SUPPORT_TARGET_TEMPERATURE,
@@ -210,12 +211,36 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         """
         return self._supported_preset_modes
 
+    def set_preset_mode(self, preset_mode):
+        """Set new target preset mode."""
+
+        _LOGGER.debug(
+            "Setting preset mode to %s",
+            preset_mode
+        )
+
+        if preset_mode == PRESET_HOME:
+            mode = "at_home"
+        elif preset_mode == PRESET_AWAY:
+            mode = "leaving_home"
+        elif preset_mode == PRESET_PAUSE:
+            mode = "pause"
+
+        if mode is None:
+            return
+
+        self._ally.setMode(self._device_id, mode)
+
     @property
     def hvac_action(self):
         """Return the current running hvac operation if supported.
         Need to be one of CURRENT_HVAC_*.
         """
-        return CURRENT_HVAC_HEAT
+        if 'work_state' in self._device:
+            if self._device['work_state'] == 'Heat':
+                return CURRENT_HVAC_HEAT
+            elif self._device['work_state'] == 'NoHeat':
+                return CURRENT_HVAC_IDLE
 
     @property
     def temperature_unit(self):
@@ -272,4 +297,18 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
     def set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
-        #Currently unsupported by API
+
+        _LOGGER.debug(
+            "Setting hvac mode to %s",
+            hvac_mode
+        )
+
+        if hvac_mode == HVAC_MODE_AUTO:
+            mode = "at_home"  # We have to choose either at_home or leaving_home
+        elif hvac_mode == HVAC_MODE_HEAT:
+            mode = "manual"
+
+        if mode is None:
+            return
+
+        self._ally.setMode(self._device_id, mode)
