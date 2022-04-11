@@ -177,7 +177,7 @@ class AllyConnector:
         self.ally.setTemperature(device_id, temperature)
 
     def setMode(self, device_id: str, mode: str):
-        """Set mode for device_id."""
+        """Set operating mode for device_id."""
         self.ally.setMode(device_id, mode)
 
     @property
