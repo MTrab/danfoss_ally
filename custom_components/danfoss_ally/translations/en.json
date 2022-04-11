@@ -13,8 +13,7 @@
                 "data": {
                     "key": "API Key",
                     "secret": "API Secret"
-                },
-                "title": "Connect to your Danfoss Ally account"
+                }
             }
         }
     }

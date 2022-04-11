@@ -3,9 +3,13 @@
     "name": "Danfoss Ally",
     "documentation": "https://github.com/MTrab/danfoss_ally/blob/master/README.md",
     "issue_tracker": "https://github.com/MTrab/danfoss_ally/issues",
-    "requirements": ["pydanfossally==0.0.26"],
-    "codeowners": ["@MTrab"],
-    "version": "1.0.4",
+    "requirements": [
+        "pydanfossally==0.0.26"
+    ],
+    "codeowners": [
+        "@MTrab"
+    ],
+    "version": "1.0.6",
     "config_flow": true,
     "iot_class": "cloud_polling"
 }

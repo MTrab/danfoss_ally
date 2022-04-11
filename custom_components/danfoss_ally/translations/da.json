@@ -1,0 +1,20 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Enheden er allerede konfigureret"
+        },
+        "error": {
+            "cannot_connect": "Kunne ikke forbinde",
+            "invalid_auth": "Forkert API key eller API secret",
+            "unknown": "Uventet fejl"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "key": "API Key",
+                    "secret": "API Secret"
+                }
+            }
+        }
+    }
+}
