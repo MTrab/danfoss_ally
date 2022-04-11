@@ -5,11 +5,14 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_OFF,
 )
 
-from pydanfossally.const import (  # pylint: disable=no-name-in-module
-    THERMOSTAT_MODE_AUTO,
-    THERMOSTAT_MODE_MANUAL,
-    THERMOSTAT_MODE_OFF,
-)
+THERMOSTAT_MODE_AUTO = "hot"
+THERMOSTAT_MODE_MANUAL = "manual"
+THERMOSTAT_MODE_OFF = "pause"
+
+HVAC_MODE_MANUAL = "manual"
+
+PRESET_MANUAL = "Manual"
+PRESET_PAUSE = "Pause"
 
 HA_TO_DANFOSS_HVAC_MODE_MAP = {
     HVAC_MODE_OFF: THERMOSTAT_MODE_OFF,

@@ -21,12 +21,15 @@ from . import AllyConnector
 from .const import (
     DATA,
     DOMAIN,
+    HVAC_MODE_MANUAL,
+    PRESET_MANUAL,
+    PRESET_PAUSE,
     SIGNAL_ALLY_UPDATE_RECEIVED,
 )
 from .entity import AllyDeviceEntity
 
 # Custom preset for pause mode
-PRESET_PAUSE = "pause"
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +59,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._unique_id = f"climate_{device_id}_ally"
 
         self._supported_hvac_modes = supported_hvac_modes
-        self._supported_preset_modes = [PRESET_HOME, PRESET_AWAY, PRESET_PAUSE]
+        self._supported_preset_modes = [PRESET_HOME, PRESET_AWAY, PRESET_PAUSE, PRESET_MANUAL]
         self._support_flags = support_flags
 
         self._available = False
@@ -143,6 +146,8 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
                 return PRESET_AWAY
             elif self._device["mode"] == "pause":
                 return PRESET_PAUSE
+            elif self._device["mode"] == "manual":
+                return PRESET_MANUAL
 
     @property
     def hvac_modes(self):
@@ -167,6 +172,8 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             mode = "leaving_home"
         elif preset_mode == PRESET_PAUSE:
             mode = "pause"
+        elif preset_mode == PRESET_MANUAL:
+            mode = "manual"
 
         if mode is None:
             return
