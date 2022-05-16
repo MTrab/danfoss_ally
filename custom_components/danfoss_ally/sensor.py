@@ -31,7 +31,7 @@ async def async_setup_entry(
     entities = []
 
     for device in ally.devices:
-        for sensor_type in ["battery", "temperature", "humidity"]:
+        for sensor_type in ["battery", "temperature", "humidity", "floor temperature"]:
             if sensor_type in ally.devices[device]:
                 _LOGGER.debug(
                     "Found %s sensor for %s", sensor_type, ally.devices[device]["name"]
@@ -74,6 +74,8 @@ class AllySensor(AllyDeviceEntity):
             self._state = self._device["temperature"]
         elif self._type == "humidity":
             self._state = self._device["humidity"]
+        elif self._type == "floor temperature":
+            self._state = self._device["floor temperature"]
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
@@ -111,7 +113,7 @@ class AllySensor(AllyDeviceEntity):
         """Return the unit of measurement."""
         if self._type == "battery":
             return PERCENTAGE
-        elif self._type == "temperature":
+        elif self._type == "temperature" or self._type == "floor temperature":
             return TEMP_CELSIUS
         elif self._type == "humidity":
             return PERCENTAGE
@@ -122,7 +124,7 @@ class AllySensor(AllyDeviceEntity):
         """Return the class of this sensor."""
         if self._type == "battery":
             return DEVICE_CLASS_BATTERY
-        elif self._type == "temperature":
+        elif self._type == "temperature" or self._type == "floor temperature":
             return DEVICE_CLASS_TEMPERATURE
         elif self._type == "humidity":
             return DEVICE_CLASS_HUMIDITY
@@ -146,3 +148,5 @@ class AllySensor(AllyDeviceEntity):
             self._state = self._device["temperature"]
         elif self._type == "humidity":
             self._state = self._device["humidity"]
+        elif self._type == "floor temperature":
+            self._state = self._device["floor temperature"]

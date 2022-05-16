@@ -59,12 +59,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._unique_id = f"climate_{device_id}_ally"
 
         self._supported_hvac_modes = supported_hvac_modes
-        self._supported_preset_modes = [
-            PRESET_HOME,
-            PRESET_AWAY,
-            PRESET_PAUSE,
-            PRESET_MANUAL,
-        ]
+        self._supported_preset_modes = [PRESET_HOME, PRESET_AWAY, PRESET_PAUSE, PRESET_MANUAL, "Holiday"]
         self._support_flags = support_flags
 
         self._available = False
@@ -74,7 +69,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             self._cur_temp = self._device["temperature"]
         else:
             # TEMPORARY fix for missing temperature sensor
-            self._cur_temp = self._device["setpoint"]
+            self._cur_temp = self.get_setpoint_for_current_mode() #self._device["setpoint"]
 
         # Low temperature set in Ally app
         if "lower_temp" in self._device:
@@ -125,7 +120,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             return self._device["temperature"]
         else:
             # TEMPORARY fix for missing temperature sensor
-            return self._device["setpoint"]
+            return self.get_setpoint_for_current_mode() #self._device["setpoint"]
 
     @property
     def hvac_mode(self):
@@ -138,7 +133,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
                 or self._device["mode"] == "leaving_home"
             ):
                 return HVAC_MODE_AUTO
-            elif self._device["mode"] == "manual":
+            elif (self._device["mode"] == "manual" or self._device["mode"] == "pause" or self._device["mode"] == "holiday"):
                 return HVAC_MODE_HEAT
 
     @property
@@ -153,6 +148,8 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
                 return PRESET_PAUSE
             elif self._device["mode"] == "manual":
                 return PRESET_MANUAL
+            elif self._device["mode"] == "holiday":
+                return "Holiday"
 
     @property
     def hvac_modes(self):
@@ -179,11 +176,19 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             mode = "pause"
         elif preset_mode == PRESET_MANUAL:
             mode = "manual"
+        elif preset_mode == "Holiday":
+            mode = "holiday"
 
         if mode is None:
             return
 
+        self._device["mode"] = mode     # Update current copy of device data
+        #self._ally.setMode(self._device_id, mode)
         self._ally.set_mode(self._device_id, mode)
+
+        # Update ASAP
+        self._ally.update_single_device(self._device_id, mode)
+
 
     @property
     def hvac_action(self):
@@ -209,16 +214,20 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
     @property
     def target_temperature(self):
         """Return the temperature we try to reach."""
-        return self._device["setpoint"]
+        return self.get_setpoint_for_current_mode() #self._device["setpoint"]
 
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
-        if temperature is None:
+        setpoint_code = self.get_setpoint_code_for_mode(self._device["mode"])
+        if temperature is None or setpoint_code is None:
             return
 
-        self._ally.set_mode(self._device_id, "manual")
-        self._ally.set_temperature(self._device_id, temperature)
+        self._device[setpoint_code] = temperature # Update temperature in current copy
+        self._ally.set_temperature(self._device_id, temperature, setpoint_code)
+
+        # Update ASAP
+        self._ally.update_single_device(self._device_id, None)
 
     @property
     def available(self):
@@ -262,6 +271,31 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
         self._ally.set_mode(self._device_id, mode)
 
+        # Update ASAP
+        self._ally.update_single_device(self._device_id, mode)
+
+
+    def get_setpoint_code_for_mode(self, mode):
+        if mode == "at_home":
+            setpoint_code = "at_home_setting"
+        elif mode == "leaving_home":
+            setpoint_code = "leaving_home_setting"
+        elif mode == "pause":
+            setpoint_code = "pause_setting"
+        elif mode == "manual":
+            setpoint_code = "manual_mode_fast"
+        elif mode == "holiday":
+            setpoint_code = "holiday_setting"
+        return setpoint_code
+
+    def get_setpoint_for_current_mode(self):
+        if "mode" in self._device:
+            setpoint_code = self.get_setpoint_code_for_mode(self._device["mode"])
+
+            if setpoint_code is not None and setpoint_code in self._device:
+                setpoint = self._device[setpoint_code]
+
+        return(setpoint)
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities

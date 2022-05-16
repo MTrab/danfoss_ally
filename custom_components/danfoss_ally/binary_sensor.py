@@ -66,7 +66,6 @@ async def async_setup_entry(
                     )
                 ]
             )
-            
     
     if entities:
         async_add_entities(entities, True)
@@ -100,7 +99,7 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
         elif self._type == "open window":
             self._state = bool(self._device['window_open'])
         elif self._type == "child lock":
-            self._state = bool(self._device['child_lock'])
+            self._state = not bool(self._device['child_lock'])
         elif self._type == "connectivity":
             self._state = bool(self._device['online'])
 
@@ -137,7 +136,7 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             return DEVICE_CLASS_CONNECTIVITY
         elif self._type == "open window":
             return DEVICE_CLASS_WINDOW
-        elif self._type == "child_lock":
+        elif self._type == "child lock":
             return DEVICE_CLASS_LOCK
         elif self._type == "connectivity":
             return DEVICE_CLASS_CONNECTIVITY
@@ -163,6 +162,6 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
         elif self._type == "open window":
             self._state = bool(self._device['window_open'])
         elif self._type == "child lock":
-            self._state = bool(self._device['child_lock'])
+            self._state = not bool(self._device['child_lock'])
         elif self._type == "connectivity":
             self._state = bool(self._device['online'])

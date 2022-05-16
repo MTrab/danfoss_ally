@@ -12,7 +12,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import Throttle
-from pydanfossally import DanfossAlly
+from .pydanfossally import DanfossAlly
 
 from .const import (
     CONF_KEY,
@@ -164,14 +164,28 @@ class AllyConnector:
             _LOGGER.debug("%s: %s", device, self.ally.devices[device])
         dispatcher_send(self.hass, SIGNAL_ALLY_UPDATE_RECEIVED)
 
+    def update_single_device(self, device_id, expected_mode) -> None:
+        """Update API data."""
+        _LOGGER.debug("Updating Danfoss Ally device %s", device_id)
+
+        # Update single device, and retry if we do not get the expected mode
+        itry = 0
+        while itry == 0 or (itry <= 4 and expected_mode is not None and expected_mode != self.ally.devices[device_id]["mode"]):
+            #_LOGGER.debug("Retry: %s", itry)
+            itry += 1
+            self.ally.getDevice(device_id)
+
+        _LOGGER.debug("%s: %s", device_id, self.ally.devices[device_id])
+        dispatcher_send(self.hass, SIGNAL_ALLY_UPDATE_RECEIVED)
+
     @property
     def devices(self):
         """Return device list from API."""
         return self.ally.devices
 
-    def set_temperature(self, device_id: str, temperature: float) -> None:
+    def set_temperature(self, device_id: str, temperature: float, code = "manual_mode_fast") -> None:
         """Set temperature for device_id."""
-        self.ally.setTemperature(device_id, temperature)
+        self.ally.setTemperature(device_id, temperature, code)
 
     def set_mode(self, device_id: str, mode: str) -> None:
         """Set operating mode for device_id."""
