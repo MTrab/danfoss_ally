@@ -13,6 +13,7 @@ HVAC_MODE_MANUAL = "manual"
 
 PRESET_MANUAL = "Manual"
 PRESET_PAUSE = "Pause"
+PRESET_HOLIDAY = "Holiday"
 
 HA_TO_DANFOSS_HVAC_MODE_MAP = {
     HVAC_MODE_OFF: THERMOSTAT_MODE_OFF,
@@ -33,3 +34,9 @@ SIGNAL_ALLY_UPDATE_RECEIVED = "ally_update_received"
 UNIQUE_ID = "unique_id"
 UPDATE_LISTENER = "update_listener"
 UPDATE_TRACK = "update_track"
+
+ACTION_TYPE_SET_PRESET_TEMPERATURE = "set_preset_temperature"
+ATTR_SETPOINT = "setpoint"
+
+
+

@@ -1,6 +1,8 @@
 """Support for Danfoss Ally thermostats."""
 import logging
 
+import voluptuous as vol
+
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
@@ -11,11 +13,15 @@ from homeassistant.components.climate.const import (
     SUPPORT_PRESET_MODE,
     PRESET_HOME,
     PRESET_AWAY,
+    ATTR_PRESET_MODE,
+    ATTR_HVAC_MODE,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers import entity_platform   # config_validation as cv
+import functools as ft
 
 from . import AllyConnector
 from .const import (
@@ -24,6 +30,7 @@ from .const import (
     HVAC_MODE_MANUAL,
     PRESET_MANUAL,
     PRESET_PAUSE,
+    PRESET_HOLIDAY,
     SIGNAL_ALLY_UPDATE_RECEIVED,
 )
 from .entity import AllyDeviceEntity
@@ -59,7 +66,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._unique_id = f"climate_{device_id}_ally"
 
         self._supported_hvac_modes = supported_hvac_modes
-        self._supported_preset_modes = [PRESET_HOME, PRESET_AWAY, PRESET_PAUSE, PRESET_MANUAL, "Holiday"]
+        self._supported_preset_modes = [PRESET_HOME, PRESET_AWAY, PRESET_PAUSE, PRESET_MANUAL, PRESET_HOLIDAY]
         self._support_flags = support_flags
 
         self._available = False
@@ -128,10 +135,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         Need to be one of HVAC_MODE_*.
         """
         if "mode" in self._device:
-            if (
-                self._device["mode"] == "at_home"
-                or self._device["mode"] == "leaving_home"
-            ):
+            if (self._device["mode"] == "at_home" or self._device["mode"] == "leaving_home"):
                 return HVAC_MODE_AUTO
             elif (self._device["mode"] == "manual" or self._device["mode"] == "pause" or self._device["mode"] == "holiday"):
                 return HVAC_MODE_HEAT
@@ -149,7 +153,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             elif self._device["mode"] == "manual":
                 return PRESET_MANUAL
             elif self._device["mode"] == "holiday":
-                return "Holiday"
+                return PRESET_HOLIDAY
 
     @property
     def hvac_modes(self):
@@ -176,7 +180,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             mode = "pause"
         elif preset_mode == PRESET_MANUAL:
             mode = "manual"
-        elif preset_mode == "Holiday":
+        elif preset_mode == PRESET_HOLIDAY:
             mode = "holiday"
 
         if mode is None:
@@ -186,9 +190,8 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         #self._ally.setMode(self._device_id, mode)
         self._ally.set_mode(self._device_id, mode)
 
-        # Update ASAP
-        self._ally.update_single_device(self._device_id, mode)
-
+        # Update UI
+        self.async_write_ha_state()
 
     @property
     def hvac_action(self):
@@ -218,16 +221,39 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
-        temperature = kwargs.get(ATTR_TEMPERATURE)
-        setpoint_code = self.get_setpoint_code_for_mode(self._device["mode"])
-        if temperature is None or setpoint_code is None:
-            return
+        #for key, value in kwargs.items():
+        #    _LOGGER.debug("%s = %s", key, value)
 
-        self._device[setpoint_code] = temperature # Update temperature in current copy
-        self._ally.set_temperature(self._device_id, temperature, setpoint_code)
+        if ATTR_TEMPERATURE in kwargs:
+            temperature = kwargs.get(ATTR_TEMPERATURE)
 
-        # Update ASAP
-        self._ally.update_single_device(self._device_id, None)
+        if ATTR_PRESET_MODE in kwargs:
+            setpoint_code = self.get_setpoint_code_for_mode(kwargs.get(ATTR_PRESET_MODE))   # Preset_mode sent from action
+        elif ATTR_HVAC_MODE in kwargs:
+            value = kwargs.get(ATTR_HVAC_MODE)                                              # HVAC_mode sent from action
+            if value == HVAC_MODE_AUTO:
+                setpoint_code = self.get_setpoint_code_for_mode("at_home")
+            if value == HVAC_MODE_HEAT:
+                setpoint_code = self.get_setpoint_code_for_mode("manual")
+        else:
+            setpoint_code = self.get_setpoint_code_for_mode(self._device["mode"])           # Current preset_mode
+        #_LOGGER.debug("setpoint_code: %s", setpoint_code)
+
+        changed = False
+        if temperature is not None and setpoint_code is not None:
+            self._device[setpoint_code] = temperature # Update temperature in current copy
+            self._ally.set_temperature(self._device_id, temperature, setpoint_code)
+            changed = True
+
+        # Update UI
+        if changed:
+            self.async_write_ha_state()
+
+    async def set_preset_temperature(self, **kwargs):
+        await self.hass.async_add_executor_job(
+            ft.partial(self.set_temperature, **kwargs)
+        )
+
 
     @property
     def available(self):
@@ -269,16 +295,18 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         if mode is None:
             return
 
+        self._device["mode"] = mode     # Update current copy of device data
         self._ally.set_mode(self._device_id, mode)
 
-        # Update ASAP
-        self._ally.update_single_device(self._device_id, mode)
+        # Update UI
+        self.async_write_ha_state()
 
 
     def get_setpoint_code_for_mode(self, mode):
-        if mode == "at_home":
+        setpoint_code = None
+        if mode == "at_home" or mode == "home":
             setpoint_code = "at_home_setting"
-        elif mode == "leaving_home":
+        elif mode == "leaving_home" or mode == "away":
             setpoint_code = "leaving_home_setting"
         elif mode == "pause":
             setpoint_code = "pause_setting"
@@ -289,6 +317,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         return setpoint_code
 
     def get_setpoint_for_current_mode(self):
+        setpoint = None
         if "mode" in self._device:
             setpoint_code = self.get_setpoint_code_for_mode(self._device["mode"])
 
@@ -302,9 +331,19 @@ async def async_setup_entry(
 ):
     """Set up the Danfoss Ally climate platform."""
 
+    platform = entity_platform.current_platform.get()
+    platform.async_register_entity_service(
+        "set_preset_temperature",
+        {
+            vol.Required("temperature"): vol.Coerce(float),
+            vol.Optional("preset_mode"): str,
+        },
+        "set_preset_temperature"
+    )
+
     ally: AllyConnector = hass.data[DOMAIN][entry.entry_id][DATA]
     entities = await hass.async_add_executor_job(_generate_entities, ally)
-    _LOGGER.debug(ally.devices)
+    #_LOGGER.debug(ally.devices)
     if entities:
         async_add_entities(entities, True)
 
@@ -315,6 +354,7 @@ def _generate_entities(ally: AllyConnector):
     entities = []
     for device in ally.devices:
         if ally.devices[device]["isThermostat"]:
+            _LOGGER.debug("Found climate entity for %s", ally.devices[device]["name"])
             entity = create_climate_entity(ally, ally.devices[device]["name"], device)
             if entity:
                 entities.append(entity)

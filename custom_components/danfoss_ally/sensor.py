@@ -33,9 +33,7 @@ async def async_setup_entry(
     for device in ally.devices:
         for sensor_type in ["battery", "temperature", "humidity", "floor temperature"]:
             if sensor_type in ally.devices[device]:
-                _LOGGER.debug(
-                    "Found %s sensor for %s", sensor_type, ally.devices[device]["name"]
-                )
+                _LOGGER.debug("Found %s sensor for %s", sensor_type, ally.devices[device]["name"])
                 entities.extend(
                     [
                         AllySensor(

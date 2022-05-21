@@ -1,6 +1,6 @@
 """Adds support for Danfoss Ally Gateway."""
 import asyncio
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 import voluptuous as vol
 
@@ -89,11 +89,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         _LOGGER.error("Error authorizing")
         return False
 
-    await hass.async_add_executor_job(allyconnector.update)
+    async def _update(now):
+        """Periodic update."""
+        await allyconnector.async_update()
+    await _update(None)     #await hass.async_add_executor_job(allyconnector.update)
 
     update_track = async_track_time_interval(
         hass,
-        lambda now: allyconnector.update(),
+        _update, #lambda now: allyconnector.update(),
         timedelta(seconds=SCAN_INTERVAL),
     )
 
@@ -148,6 +151,8 @@ class AllyConnector:
         self._secret = secret
         self.ally = DanfossAlly()
         self._authorized = False
+        self._latest_write_time = datetime.min
+        self._latest_poll_time = datetime.min
 
     def setup(self) -> None:
         """Setup API connection."""
@@ -156,27 +161,37 @@ class AllyConnector:
         self._authorized = auth
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    def update(self) -> None:
+    async def async_update(self) -> None:
         """Update API data."""
         _LOGGER.debug("Updating Danfoss Ally devices")
-        self.ally.getDeviceList()
+
+        # Postpone poll if a recent change were made - Attempt to avoid UI glitches 
+        seconds_since_write = (datetime.utcnow() - self._latest_write_time).total_seconds()
+        if (seconds_since_write < 1):
+            _LOGGER.debug("Seconds since last write %f. Postponing update for 1 sec.", seconds_since_write)
+            await asyncio.sleep(1)
+
+        # Poll API
+        await self.hass.async_add_executor_job(self.ally.getDeviceList)     #self.ally.getDeviceList()
+        self._latest_poll_time = datetime.utcnow()
+
         for device in self.ally.devices:  # pylint: disable=consider-using-dict-items
             _LOGGER.debug("%s: %s", device, self.ally.devices[device])
         dispatcher_send(self.hass, SIGNAL_ALLY_UPDATE_RECEIVED)
 
-    def update_single_device(self, device_id, expected_mode) -> None:
-        """Update API data."""
-        _LOGGER.debug("Updating Danfoss Ally device %s", device_id)
+    # def update_single_device(self, device_id, expected_mode) -> None:
+    #     """Update API data."""
+    #     _LOGGER.debug("Updating Danfoss Ally device %s", device_id)
 
-        # Update single device, and retry if we do not get the expected mode
-        itry = 0
-        while itry == 0 or (itry <= 4 and expected_mode is not None and expected_mode != self.ally.devices[device_id]["mode"]):
-            #_LOGGER.debug("Retry: %s", itry)
-            itry += 1
-            self.ally.getDevice(device_id)
+    #     # Update single device, and retry if we do not get the expected mode
+    #     itry = 0
+    #     while itry == 0 or (itry <= 4 and expected_mode is not None and expected_mode != self.ally.devices[device_id]["mode"]):
+    #         #_LOGGER.debug("Retry: %s", itry)
+    #         itry += 1
+    #         self.ally.getDevice(device_id)
 
-        _LOGGER.debug("%s: %s", device_id, self.ally.devices[device_id])
-        dispatcher_send(self.hass, SIGNAL_ALLY_UPDATE_RECEIVED)
+    #     _LOGGER.debug("%s: %s", device_id, self.ally.devices[device_id])
+    #     dispatcher_send(self.hass, SIGNAL_ALLY_UPDATE_RECEIVED)
 
     @property
     def devices(self):
@@ -185,11 +200,23 @@ class AllyConnector:
 
     def set_temperature(self, device_id: str, temperature: float, code = "manual_mode_fast") -> None:
         """Set temperature for device_id."""
+        self._latest_write_time = datetime.utcnow()
         self.ally.setTemperature(device_id, temperature, code)
+
+        # Debug info - log if update was done approximately as the same time as write
+        seconds_since_poll = (datetime.utcnow() - self._latest_poll_time).total_seconds()
+        if (seconds_since_poll < 0.5):
+            _LOGGER.warn("set_temperature: Time since last poll %f sec.", seconds_since_poll)
 
     def set_mode(self, device_id: str, mode: str) -> None:
         """Set operating mode for device_id."""
+        self._latest_write_time = datetime.utcnow()
         self.ally.setMode(device_id, mode)
+
+        # Debug info - log if update was done approximately as the same time as write
+        seconds_since_poll = (datetime.utcnow() - self._latest_poll_time).total_seconds()
+        if (seconds_since_poll < 0.5):
+            _LOGGER.warn("set_mode: Time since last poll %f sec.", seconds_since_poll)
 
     @property
     def authorized(self) -> bool:
