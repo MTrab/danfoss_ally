@@ -1,3 +1,47 @@
+# Danfoss Ally
+
+
+This integration is forked from: **[MTrab / danfoss_ally](https://github.com/MTrab/danfoss_ally)**  v1.0.7
+  
+### Improvements
+
+- Reading and writing setpoints using: `manual_mode_fast`, `at_home_setting`, `leaving_home_setting`, `pause_setting`, `holiday_setting` depending on the preset mode, rather than using `temp_set` as before.
+It seems to work, so far.
+ 
+- Holiday preset mode added.
+ 
+- Quicker reaction to changes done in the UI
+ 
+- Added floor temperature sensor
+ 
+- Fix for setmode issue
+
+- Added action and service call to set target temperature for a specific preset mode.
+Preset mode is optional, and writes to current preset mode when not specified.
+
+##### Things to note in the Danfoss Ally app
+
+- The app shows the floor temperature (when present) in the overview, and the room temperature on the details page. That is somewhat confusing, I think. Especially when it doesn't indicate it which is which.
+
+- When switching to manual mode from the app, it will take the previous taget temparature as target also for manual. Thus, overwrite target temperature for manual preset.
+Switching from this integration will just switch to manual and not overwrite target temperature, unless specifically set. 
+  
+*Note: Changes are not tested with radiator thermostates*
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
+---
+Previous README
+
+---
+<br/>
+
 [![](https://img.shields.io/github/release/mtrab/danfoss_ally/all.svg?style=plastic)](https://github.com/mtrab/danfoss_ally/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=plastic)](https://github.com/custom-components/hacs)
 
