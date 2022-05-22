@@ -3,21 +3,25 @@
 
 This integration is forked from: **[MTrab / danfoss_ally](https://github.com/MTrab/danfoss_ally)**  v1.0.7
   
-### Improvements
+### Additions
 
 - Reading and writing setpoints using: `manual_mode_fast`, `at_home_setting`, `leaving_home_setting`, `pause_setting`, `holiday_setting` depending on the preset mode, rather than using `temp_set` as before.
 It seems to work, so far.
  
 - Holiday preset mode added.
  
-- Quicker reaction to changes done in the UI
+- Quicker reaction to changes performed in the UI
  
 - Added floor temperature sensor
  
 - Fix for setmode issue
 
-- Added action and service call to set target temperature for a specific preset mode.
+- Added action and service call to set target temperature for a specific preset mode.  
 Preset mode is optional, and writes to current preset mode when not specified.
+
+- Added an indication for 'banner control' (local override).  
+When setpoint is changed locally from the thermostate it raises this flag and uses this as manual target setpoint.  
+
 
 ##### Things to note in the Danfoss Ally app
 
