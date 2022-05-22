@@ -37,7 +37,7 @@ async def async_setup_entry(
                 entities.extend(
                     [
                         AllySensor(
-                            ally, ally.devices[device]["name"], device, sensor_type
+                            ally, ally.devices[device]["name"], device, sensor_type, ally.devices[device]["model"]
                         )
                     ]
                 )
@@ -49,13 +49,13 @@ async def async_setup_entry(
 class AllySensor(AllyDeviceEntity):
     """Representation of an Ally sensor."""
 
-    def __init__(self, ally, name, device_id, device_type):
+    def __init__(self, ally, name, device_id, device_type, model):
         """Initialize Ally binary_sensor."""
         self._ally = ally
         self._device = ally.devices[device_id]
         self._device_id = device_id
         self._type = device_type
-        super().__init__(name, device_id, device_type)
+        super().__init__(name, device_id, device_type, model)
 
         _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
 

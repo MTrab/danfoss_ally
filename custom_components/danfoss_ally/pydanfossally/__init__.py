@@ -60,6 +60,8 @@ class DanfossAlly:
         self.devices[device["id"]]["update"] = device["update_time"]
         if "model" in device:
             self.devices[device["id"]]["model"] = device["model"]
+        elif "device_type" in device:
+            self.devices[device["id"]]["model"] = device["device_type"]
 
         bHasFloorSensor = False
         for status in device["status"]:
@@ -111,14 +113,15 @@ class DanfossAlly:
                     self.devices[device["id"]]["window_open"] = True
                 else:
                     self.devices[device["id"]]["window_open"] = False
-            elif status["code"] == "child_lock":
-                childlock = status["value"]
-                self.devices[device["id"]]["child_lock"] = childlock
-            elif status["code"] == "mode":
-                self.devices[device["id"]]["mode"] = status["value"]
-            elif status["code"] == "work_state":
-                self.devices[device["id"]]["work_state"] = status["value"]
-
+            # elif status["code"] == "child_lock":
+            #     childlock = status["value"]
+            #     self.devices[device["id"]]["child_lock"] = childlock
+            # elif status["code"] == "mode":
+            #     self.devices[device["id"]]["mode"] = status["value"]
+            # elif status["code"] == "work_state":
+            #     self.devices[device["id"]]["work_state"] = status["value"]
+            if status["code"] in ["child_lock", "mode", "work_state", "banner_ctrl"]:
+                self.devices[device["id"]][status["code"]] = status["value"]
 
     def getDevice(self, device_id):
         """Get device data."""

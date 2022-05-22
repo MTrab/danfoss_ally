@@ -49,6 +49,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         ally,
         name,
         device_id,
+        model,
         heat_min_temp,
         heat_max_temp,
         heat_step,
@@ -59,7 +60,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._ally = ally
         self._device = ally.devices[device_id]
         self._device_id = device_id
-        super().__init__(name, device_id, "climate")
+        super().__init__(name, device_id, "climate", model)
 
         _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
 
@@ -302,9 +303,12 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self.async_write_ha_state()
 
 
-    def get_setpoint_code_for_mode(self, mode):
+    def get_setpoint_code_for_mode(self, mode, for_writing = True):
         setpoint_code = None
-        if mode == "at_home" or mode == "home":
+        if for_writing == False and "banner_ctrl" in self._device and bool(self._device['banner_ctrl']):
+            # Temperature setpoint is overridden locally at the thermostate
+            setpoint_code = "manual_mode_fast"
+        elif mode == "at_home" or mode == "home":
             setpoint_code = "at_home_setting"
         elif mode == "leaving_home" or mode == "away":
             setpoint_code = "leaving_home_setting"
@@ -319,7 +323,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
     def get_setpoint_for_current_mode(self):
         setpoint = None
         if "mode" in self._device:
-            setpoint_code = self.get_setpoint_code_for_mode(self._device["mode"])
+            setpoint_code = self.get_setpoint_code_for_mode(self._device["mode"], False)
 
             if setpoint_code is not None and setpoint_code in self._device:
                 setpoint = self._device[setpoint_code]
@@ -355,13 +359,13 @@ def _generate_entities(ally: AllyConnector):
     for device in ally.devices:
         if ally.devices[device]["isThermostat"]:
             _LOGGER.debug("Found climate entity for %s", ally.devices[device]["name"])
-            entity = create_climate_entity(ally, ally.devices[device]["name"], device)
+            entity = create_climate_entity(ally, ally.devices[device]["name"], device, ally.devices[device]["model"])
             if entity:
                 entities.append(entity)
     return entities
 
 
-def create_climate_entity(ally, name: str, device_id: str) -> AllyClimate:
+def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyClimate:
     """Create a Danfoss Ally climate entity."""
 
     support_flags = SUPPORT_TARGET_TEMPERATURE | SUPPORT_PRESET_MODE
@@ -374,6 +378,7 @@ def create_climate_entity(ally, name: str, device_id: str) -> AllyClimate:
         ally,
         name,
         device_id,
+        model,
         heat_min_temp,
         heat_max_temp,
         heat_step,
