@@ -30,7 +30,7 @@ When setpoint is changed locally from the thermostate it raises this flag and us
 - When switching to manual mode from the app, it will take the previous taget temparature as target also for manual. Thus, overwrite target temperature for manual preset.
 Switching from this integration will just switch to manual and not overwrite target temperature, unless specifically set. 
   
-*Note: Changes are not tested with radiator thermostates*
+*Note: Changes are limited tested with radiator thermostates*
 <br/>
 <br/>
 <br/>
