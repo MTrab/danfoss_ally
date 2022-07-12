@@ -4,7 +4,7 @@
 	"name": "Danfoss Ally integration development",
 	"context": "..",
 	"appPort": [
-		"9123:8123"
+		"9126:8123"
 	],
 	"postCreateCommand": "container install",
 	"extensions": [
