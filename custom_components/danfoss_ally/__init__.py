@@ -1,9 +1,9 @@
 """Adds support for Danfoss Ally Gateway."""
 import asyncio
-from datetime import timedelta
 import logging
-import voluptuous as vol
+from datetime import timedelta
 
+import voluptuous as vol
 from homeassistant.components.climate.const import PRESET_AWAY, PRESET_HOME
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.core import HomeAssistant, callback

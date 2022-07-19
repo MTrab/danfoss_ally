@@ -1,22 +1,18 @@
 """Support for Ally sensors."""
 import logging
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     DEVICE_CLASS_BATTERY,
-    DEVICE_CLASS_TEMPERATURE,
     DEVICE_CLASS_HUMIDITY,
+    DEVICE_CLASS_TEMPERATURE,
     PERCENTAGE,
     TEMP_CELSIUS,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from .const import (
-    DATA,
-    DOMAIN,
-    SIGNAL_ALLY_UPDATE_RECEIVED,
-)
+from .const import DATA, DOMAIN, SIGNAL_ALLY_UPDATE_RECEIVED
 from .entity import AllyDeviceEntity
 
 _LOGGER = logging.getLogger(__name__)
