@@ -2,17 +2,16 @@
 import logging
 
 import voluptuous as vol
-
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_IDLE,
     HVAC_MODE_AUTO,
     HVAC_MODE_HEAT,
-    SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_PRESET_MODE,
-    PRESET_HOME,
     PRESET_AWAY,
+    PRESET_HOME,
+    SUPPORT_PRESET_MODE,
+    SUPPORT_TARGET_TEMPERATURE,
     ATTR_PRESET_MODE,
     ATTR_HVAC_MODE,
 )
@@ -20,7 +19,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers import entity_platform   # config_validation as cv
+from homeassistant.helpers import entity_platform
 import functools as ft
 
 from . import AllyConnector
@@ -67,7 +66,13 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._unique_id = f"climate_{device_id}_ally"
 
         self._supported_hvac_modes = supported_hvac_modes
-        self._supported_preset_modes = [PRESET_HOME, PRESET_AWAY, PRESET_PAUSE, PRESET_MANUAL, PRESET_HOLIDAY]
+        self._supported_preset_modes = [
+            PRESET_HOME,
+            PRESET_AWAY,
+            PRESET_PAUSE,
+            PRESET_MANUAL,
+            PRESET_HOLIDAY
+        ]
         self._support_flags = support_flags
 
         self._available = False
@@ -136,7 +141,10 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         Need to be one of HVAC_MODE_*.
         """
         if "mode" in self._device:
-            if (self._device["mode"] == "at_home" or self._device["mode"] == "leaving_home"):
+            if (
+                self._device["mode"] == "at_home"
+                or self._device["mode"] == "leaving_home"
+            ):
                 return HVAC_MODE_AUTO
             elif (self._device["mode"] == "manual" or self._device["mode"] == "pause" or self._device["mode"] == "holiday"):
                 return HVAC_MODE_HEAT
@@ -188,7 +196,6 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             return
 
         self._device["mode"] = mode     # Update current copy of device data
-        #self._ally.setMode(self._device_id, mode)
         self._ally.set_mode(self._device_id, mode)
 
         # Update UI
@@ -222,8 +229,6 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
-        #for key, value in kwargs.items():
-        #    _LOGGER.debug("%s = %s", key, value)
 
         if ATTR_TEMPERATURE in kwargs:
             temperature = kwargs.get(ATTR_TEMPERATURE)

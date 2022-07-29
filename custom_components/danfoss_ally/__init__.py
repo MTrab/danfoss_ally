@@ -1,9 +1,9 @@
 """Adds support for Danfoss Ally Gateway."""
 import asyncio
-from datetime import datetime, timedelta
 import logging
-import voluptuous as vol
+from datetime import datetime, timedelta
 
+import voluptuous as vol
 from homeassistant.components.climate.const import PRESET_AWAY, PRESET_HOME
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -12,7 +12,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import Throttle
-from .pydanfossally import DanfossAlly
+from pydanfossally import DanfossAlly
 
 from .const import (
     CONF_KEY,
@@ -178,20 +178,6 @@ class AllyConnector:
         for device in self.ally.devices:  # pylint: disable=consider-using-dict-items
             _LOGGER.debug("%s: %s", device, self.ally.devices[device])
         dispatcher_send(self.hass, SIGNAL_ALLY_UPDATE_RECEIVED)
-
-    # def update_single_device(self, device_id, expected_mode) -> None:
-    #     """Update API data."""
-    #     _LOGGER.debug("Updating Danfoss Ally device %s", device_id)
-
-    #     # Update single device, and retry if we do not get the expected mode
-    #     itry = 0
-    #     while itry == 0 or (itry <= 4 and expected_mode is not None and expected_mode != self.ally.devices[device_id]["mode"]):
-    #         #_LOGGER.debug("Retry: %s", itry)
-    #         itry += 1
-    #         self.ally.getDevice(device_id)
-
-    #     _LOGGER.debug("%s: %s", device_id, self.ally.devices[device_id])
-    #     dispatcher_send(self.hass, SIGNAL_ALLY_UPDATE_RECEIVED)
 
     @property
     def devices(self):

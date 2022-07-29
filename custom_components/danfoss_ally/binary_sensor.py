@@ -3,8 +3,8 @@ import logging
 
 from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_CONNECTIVITY,
-    DEVICE_CLASS_WINDOW,
     DEVICE_CLASS_LOCK,
+    DEVICE_CLASS_WINDOW,
     DEVICE_CLASS_TAMPER,
     BinarySensorEntity,
 )
@@ -12,11 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from .const import (
-    DATA,
-    DOMAIN,
-    SIGNAL_ALLY_UPDATE_RECEIVED,
-)
+from .const import DATA, DOMAIN, SIGNAL_ALLY_UPDATE_RECEIVED
 from .entity import AllyDeviceEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,55 +27,45 @@ async def async_setup_entry(
     entities = []
 
     for device in ally.devices:
-        if 'window_open' in ally.devices[device]:
+        if "window_open" in ally.devices[device]:
             _LOGGER.debug("Found window detector for %s", ally.devices[device]["name"])
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally,
-                        ally.devices[device]["name"],
-                        device,
-                        'open window',
-                        ally.devices[device]["model"]
+                        ally, ally.devices[device]["name"], device, "open window", ally.devices[device]["model"]
                     )
                 ]
             )
-        if 'child_lock' in ally.devices[device]:
-            _LOGGER.debug("Found child lock detector for %s", ally.devices[device]["name"])
+        if "child_lock" in ally.devices[device]:
+            _LOGGER.debug(
+                "Found child lock detector for %s", ally.devices[device]["name"]
+            )
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally,
-                        ally.devices[device]["name"],
-                        device,
-                        'child lock',
-                        ally.devices[device]["model"]
+                        ally, ally.devices[device]["name"], device, "child lock", ally.devices[device]["model"]
                     )
                 ]
             )
         if not ally.devices[device]["isThermostat"]:
-            _LOGGER.debug("Found connection sensor for %s", ally.devices[device]["name"])
+            _LOGGER.debug(
+                "Found connection sensor for %s", ally.devices[device]["name"]
+            )
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally,
-                        ally.devices[device]["name"],
-                        device,
-                        'connectivity',
-                        ally.devices[device]["model"]
+                        ally, ally.devices[device]["name"], device, "connectivity", ally.devices[device]["model"]
                     )
                 ]
             )
         if 'banner_ctrl' in ally.devices[device]:
-            _LOGGER.debug("Found banner_ctrl detector for %s", ally.devices[device]["name"])
+            _LOGGER.debug(
+                "Found banner_ctrl detector for %s", ally.devices[device]["name"]
+            )
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally,
-                        ally.devices[device]["name"],
-                        device,
-                        'banner control',
-                        ally.devices[device]["model"]
+                        ally, ally.devices[device]["name"], device, 'banner control', ally.devices[device]["model"]
                     )
                 ]
             )
@@ -101,11 +87,7 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
         self._type = device_type
         super().__init__(name, device_id, device_type, model)
 
-        _LOGGER.debug(
-            "Device_id: %s --- Device: %s",
-            self._device_id,
-            self._device
-        )
+        _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
 
         self._type = device_type
 
@@ -114,15 +96,15 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
         self._state = None
 
         if self._type == "link":
-            self._state = self._device['online']
+            self._state = self._device["online"]
         elif self._type == "open window":
-            self._state = bool(self._device['window_open'])
+            self._state = bool(self._device["window_open"])
         elif self._type == "child lock":
-            self._state = not bool(self._device['child_lock'])
+            self._state = not bool(self._device["child_lock"])
         elif self._type == "connectivity":
-            self._state = bool(self._device['online'])
+            self._state = bool(self._device["online"])
         elif self._type == "banner control":
-            self._state = bool(self._device['banner_ctrl'])
+            self._state = bool(self._device["banner_ctrl"])
 
 
     async def async_added_to_hass(self):
@@ -175,19 +157,16 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
     @callback
     def _async_update_data(self):
         """Load data."""
-        _LOGGER.debug(
-            "Loading new binary_sensor data for device %s",
-            self._device_id
-        )
+        _LOGGER.debug("Loading new binary_sensor data for device %s", self._device_id)
         self._device = self._ally.devices[self._device_id]
 
         if self._type == "link":
-            self._state = self._device['online']
+            self._state = self._device["online"]
         elif self._type == "open window":
-            self._state = bool(self._device['window_open'])
+            self._state = bool(self._device["window_open"])
         elif self._type == "child lock":
-            self._state = not bool(self._device['child_lock'])
+            self._state = not bool(self._device["child_lock"])
         elif self._type == "connectivity":
-            self._state = bool(self._device['online'])
+            self._state = bool(self._device["online"])
         elif self._type == "banner control":
             self._state = bool(self._device['banner_ctrl'])
