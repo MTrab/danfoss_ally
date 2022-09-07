@@ -14,18 +14,13 @@ from homeassistant.const import (
     PERCENTAGE,
     TEMP_CELSIUS,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from pydanfossally import DanfossAlly
 
 
-from .const import (
-    DATA,
-    DOMAIN,
-    SIGNAL_ALLY_UPDATE_RECEIVED,
-)
+from .const import DATA, DOMAIN, SIGNAL_ALLY_UPDATE_RECEIVED
 from .entity import AllyDeviceEntity
 
 _LOGGER = logging.getLogger(__name__)
