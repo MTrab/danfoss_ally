@@ -1,24 +1,20 @@
 """Support for Ally sensors."""
 from __future__ import annotations
 
-from enum import IntEnum
 import logging
+from enum import IntEnum
 
 from homeassistant.components.sensor import (
-    SensorEntity,
-    SensorStateClass,
-    SensorEntityDescription,
     SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
 )
-from homeassistant.const import (
-    PERCENTAGE,
-    TEMP_CELSIUS,
-)
+from homeassistant.const import PERCENTAGE, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from pydanfossally import DanfossAlly
-
 
 from .const import DATA, DOMAIN, SIGNAL_ALLY_UPDATE_RECEIVED
 from .entity import AllyDeviceEntity
