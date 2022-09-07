@@ -1,21 +1,65 @@
 """Support for Ally sensors."""
+from __future__ import annotations
+
+from enum import IntEnum
 import logging
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.components.sensor import (
+    SensorEntity,
+    SensorStateClass,
+    SensorEntityDescription,
+    SensorDeviceClass,
+)
 from homeassistant.const import (
-    DEVICE_CLASS_BATTERY,
-    DEVICE_CLASS_HUMIDITY,
-    DEVICE_CLASS_TEMPERATURE,
     PERCENTAGE,
     TEMP_CELSIUS,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import EntityCategory
+from pydanfossally import DanfossAlly
+
 
 from .const import DATA, DOMAIN, SIGNAL_ALLY_UPDATE_RECEIVED
 from .entity import AllyDeviceEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class AllySensorType(IntEnum):
+    """Supported sensor types."""
+
+    TEMPERATURE = 0
+    BATTERY = 1
+    HUMIDITY = 2
+
+
+SENSORS = [
+    SensorEntityDescription(
+        key=AllySensorType.TEMPERATURE,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        entity_category=None,
+        native_unit_of_measurement=TEMP_CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        name="{} Temperature",
+    ),
+    SensorEntityDescription(
+        key=AllySensorType.BATTERY,
+        device_class=SensorDeviceClass.BATTERY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        name="{} Battery",
+    ),
+    SensorEntityDescription(
+        key=AllySensorType.HUMIDITY,
+        device_class=SensorDeviceClass.HUMIDITY,
+        entity_category=None,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        name="{} Humidity",
+    ),
+]
 
 
 async def async_setup_entry(
@@ -27,49 +71,40 @@ async def async_setup_entry(
     entities = []
 
     for device in ally.devices:
-        for sensor_type in ["battery", "temperature", "humidity"]:
+        for sensor in SENSORS:
+            sensor_type = AllySensorType(sensor.key).name
             if sensor_type in ally.devices[device]:
                 _LOGGER.debug(
                     "Found %s sensor for %s", sensor_type, ally.devices[device]["name"]
                 )
                 entities.extend(
-                    [
-                        AllySensor(
-                            ally, ally.devices[device]["name"], device, sensor_type
-                        )
-                    ]
+                    [AllySensor(ally, ally.devices[device]["name"], device, sensor)]
                 )
 
     if entities:
         async_add_entities(entities, True)
 
 
-class AllySensor(AllyDeviceEntity):
+class AllySensor(AllyDeviceEntity, SensorEntity):
     """Representation of an Ally sensor."""
 
-    def __init__(self, ally, name, device_id, device_type):
+    def __init__(
+        self, ally: DanfossAlly, name, device_id, description: SensorEntityDescription
+    ):
         """Initialize Ally binary_sensor."""
+        self.entity_description = description
         self._ally = ally
         self._device = ally.devices[device_id]
         self._device_id = device_id
-        self._type = device_type
-        super().__init__(name, device_id, device_type)
+        self._type = AllySensorType(description.key).name
+        super().__init__(name, device_id, self._type)
 
         _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
 
-        self._type = device_type
-
-        self._unique_id = f"{device_type}_{device_id}_ally"
-
-        self._state = None
-        self._state_attributes = None
-
-        if self._type == "battery":
-            self._state = self._device["battery"]
-        elif self._type == "temperature":
-            self._state = self._device["temperature"]
-        elif self._type == "humidity":
-            self._state = self._device["humidity"]
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = None
+        self._attr_name = self.entity_description.name.format(name)
+        self._attr_unique_id = f"{self._type}_{device_id}_ally"
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
@@ -81,48 +116,6 @@ class AllySensor(AllyDeviceEntity):
                 self._async_update_callback,
             )
         )
-
-    @property
-    def unique_id(self):
-        """Return the unique id."""
-        return self._unique_id
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return f"{self._name} {self._type}"
-
-    @property
-    def state(self):
-        """Return sensor state."""
-        return self._state
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        return self._state_attributes
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        if self._type == "battery":
-            return PERCENTAGE
-        elif self._type == "temperature":
-            return TEMP_CELSIUS
-        elif self._type == "humidity":
-            return PERCENTAGE
-        return None
-
-    @property
-    def device_class(self):
-        """Return the class of this sensor."""
-        if self._type == "battery":
-            return DEVICE_CLASS_BATTERY
-        elif self._type == "temperature":
-            return DEVICE_CLASS_TEMPERATURE
-        elif self._type == "humidity":
-            return DEVICE_CLASS_HUMIDITY
-        return None
 
     @callback
     def _async_update_callback(self):
@@ -137,8 +130,8 @@ class AllySensor(AllyDeviceEntity):
         self._device = self._ally.devices[self._device_id]
 
         if self._type == "battery":
-            self._state = self._device["battery"]
+            self._attr_native_value = self._device["battery"]
         elif self._type == "temperature":
-            self._state = self._device["temperature"]
+            self._attr_native_value = self._device["temperature"]
         elif self._type == "humidity":
-            self._state = self._device["humidity"]
+            self._attr_native_value = self._device["humidity"]
