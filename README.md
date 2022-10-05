@@ -21,7 +21,7 @@ This is a custom component for Home Assistant to integrate the Danfoss Ally and 
 
 ## Setup
 
-First of all you need to go at get an api key and secret
+First of all you need to go and create an api-key and secret
 
 * Navigate to https://developer.danfoss.com
 * Create danfoss profile account and login
