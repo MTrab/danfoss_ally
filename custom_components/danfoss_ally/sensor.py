@@ -1,5 +1,8 @@
 """Support for Ally sensors."""
+from __future__ import annotations
+
 import logging
+from enum import IntEnum
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -9,13 +12,52 @@ from homeassistant.const import (
     PERCENTAGE,
     TEMP_CELSIUS,
 )
+
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import EntityCategory
+from pydanfossally import DanfossAlly
 
 from .const import DATA, DOMAIN, SIGNAL_ALLY_UPDATE_RECEIVED
 from .entity import AllyDeviceEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class AllySensorType(IntEnum):
+    """Supported sensor types."""
+
+    TEMPERATURE = 0
+    BATTERY = 1
+    HUMIDITY = 2
+
+
+SENSORS = [
+    SensorEntityDescription(
+        key=AllySensorType.TEMPERATURE,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        entity_category=None,
+        native_unit_of_measurement=TEMP_CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        name="{} Temperature",
+    ),
+    SensorEntityDescription(
+        key=AllySensorType.BATTERY,
+        device_class=SensorDeviceClass.BATTERY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        name="{} Battery",
+    ),
+    SensorEntityDescription(
+        key=AllySensorType.HUMIDITY,
+        device_class=SensorDeviceClass.HUMIDITY,
+        entity_category=None,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        name="{} Humidity",
+    ),
+]
 
 
 async def async_setup_entry(
@@ -44,11 +86,12 @@ async def async_setup_entry(
         async_add_entities(entities, True)
 
 
-class AllySensor(AllyDeviceEntity):
+class AllySensor(AllyDeviceEntity, SensorEntity):
     """Representation of an Ally sensor."""
 
     def __init__(self, ally, name, device_id, device_type, model):
         """Initialize Ally binary_sensor."""
+        self.entity_description = description
         self._ally = ally
         self._device = ally.devices[device_id]
         self._device_id = device_id
@@ -139,9 +182,9 @@ class AllySensor(AllyDeviceEntity):
         self._device = self._ally.devices[self._device_id]
 
         if self._type == "battery":
-            self._state = self._device["battery"]
+            self._attr_native_value = self._device["battery"]
         elif self._type == "temperature":
-            self._state = self._device["temperature"]
+            self._attr_native_value = self._device["temperature"]
         elif self._type == "humidity":
             self._state = self._device["humidity"]
         elif self._type == "floor temperature":

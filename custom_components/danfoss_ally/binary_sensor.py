@@ -51,6 +51,7 @@ async def async_setup_entry(
             _LOGGER.debug(
                 "Found connection sensor for %s", ally.devices[device]["name"]
             )
+
             entities.extend(
                 [
                     AllyBinarySensor(
@@ -70,6 +71,7 @@ async def async_setup_entry(
                 ]
             )
     
+
 
 
     if entities:
@@ -105,7 +107,6 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             self._state = bool(self._device["online"])
         elif self._type == "banner control":
             self._state = bool(self._device["banner_ctrl"])
-
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""

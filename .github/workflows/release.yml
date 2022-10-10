@@ -1,8 +1,12 @@
 name: Release
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
+
+env:
+  COMPONENT_DIR: danfoss_ally
 
 jobs:
   release_zip_file:
@@ -11,14 +15,16 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
-
-      - name: Get version
-        id: version
-        uses: home-assistant/actions/helpers/version@master
-
-      - name: "Set manifest version number"
+      - name: Update manifest.json version to ${{ github.event.release.tag_name }}
         run: |
-          python3 ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version ${{ steps.version.outputs.version }}
+          python3 ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version ${{ github.event.release.tag_name }} --path /custom_components/danfoss_ally/
+      - name: Commit manifest update
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add ./custom_components/danfoss_ally/manifest.json
+          git commit -m "Updated manifest.json"
+          git push origin HEAD:master
       - name: Create zip
         run: |
           cd custom_components/danfoss_ally
