@@ -4,6 +4,10 @@
 
 This is a custom component for Home Assistant to integrate the Danfoss Ally and Icon devices via Danfoss Ally gateway
 
+*Currently there is NO guide as to how you'd link your App and Dev accounts, hence this integration might not work for new users.<br>
+Danfoss are NOT willing to help sort their documentation.<br>
+At this moment I can only advise AGAINST buying Danfoss Ally, or if you do then avoid their gateway and use the thermostats directly via DeConz, Zigbee2MQTT or ZHA.*
+
 ### Installation:
 
 #### HACS
