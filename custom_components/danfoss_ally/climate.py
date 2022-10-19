@@ -335,6 +335,47 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
         return(setpoint)
 
+
+class IconClimate(AllyClimate):
+    """Representation of a Danfoss Icon climate entity."""
+
+    def __init__(
+        self,
+        ally,
+        name,
+        device_id,
+        model,
+        heat_min_temp,
+        heat_max_temp,
+        heat_step,
+        supported_hvac_modes,
+        support_flags,
+    ):
+        """Initialize Danfoss Icon climate entity."""
+        super().__init__(
+            ally,
+            name,
+            device_id,
+            model,
+            heat_min_temp,
+            heat_max_temp,
+            heat_step,
+            supported_hvac_modes,
+            support_flags
+        )
+
+    @property
+    def hvac_action(self):
+        """Return the current running hvac operation if supported.
+        Need to be one of CURRENT_HVAC_*.
+        """
+        if "work_state" in self._device:
+            if self._device["work_state"] == "heat_active":
+                return CURRENT_HVAC_HEAT
+            elif self._device["work_state"] == "Heat":
+                return CURRENT_HVAC_IDLE
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
@@ -379,15 +420,28 @@ def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyCl
     heat_max_temp = 35.0
     heat_step = 0.5
 
-    entity = AllyClimate(
-        ally,
-        name,
-        device_id,
-        model,
-        heat_min_temp,
-        heat_max_temp,
-        heat_step,
-        supported_hvac_modes,
-        support_flags,
-    )
+    if model == 'Icon RT':
+        entity = IconClimate(
+            ally,
+            name,
+            device_id,
+            model,
+            heat_min_temp,
+            heat_max_temp,
+            heat_step,
+            supported_hvac_modes,
+            support_flags,
+        )
+    else:
+        entity = AllyClimate(
+            ally,
+            name,
+            device_id,
+            model,
+            heat_min_temp,
+            heat_max_temp,
+            heat_step,
+            supported_hvac_modes,
+            support_flags,
+        )
     return entity
