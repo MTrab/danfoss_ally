@@ -1,11 +1,6 @@
 {
     "name": "Danfoss Ally",
     "render_readme": true,
-    "domains": [
-        "binary_sensor",
-        "climate",
-        "sensor"
-    ],
     "homeassistant": "2022.1.0",
     "zip_release": true,
     "filename": "danfoss_ally.zip"
