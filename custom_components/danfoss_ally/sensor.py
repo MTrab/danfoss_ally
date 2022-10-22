@@ -37,7 +37,7 @@ SENSORS = [
         entity_category=None,
         native_unit_of_measurement=TEMP_CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
-        name="{} Temperature",
+        name="{} temperature",
     ),
     SensorEntityDescription(
         key=AllySensorType.BATTERY,
@@ -45,7 +45,7 @@ SENSORS = [
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
-        name="{} Battery",
+        name="{} battery",
     ),
     SensorEntityDescription(
         key=AllySensorType.HUMIDITY,
@@ -53,7 +53,7 @@ SENSORS = [
         entity_category=None,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
-        name="{} Humidity",
+        name="{} humidity",
     )
 ]
 
