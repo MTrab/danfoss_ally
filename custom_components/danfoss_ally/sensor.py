@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 from enum import IntEnum
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,

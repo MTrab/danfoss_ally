@@ -4,7 +4,7 @@
     "documentation": "https://github.com/MTrab/danfoss_ally/blob/master/README.md",
     "issue_tracker": "https://github.com/MTrab/danfoss_ally/issues",
     "requirements": [
-        "pydanfossally==0.0.26"
+        "pydanfossally==0.0.27"
     ],
     "codeowners": [
         "@MTrab"
