@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 # Danfoss Ally
 
 
@@ -48,7 +46,6 @@ Previous README
 ---
 <br/>
 
->>>>>>> master
 [![danfoss_ally](https://img.shields.io/github/release/mtrab/danfoss_ally/all.svg?style=plastic&label=Current%20release)](https://github.com/mtrab/danfoss_ally) [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=plastic)](https://github.com/custom-components/hacs) ![Validate with hassfest](https://img.shields.io/github/workflow/status/mtrab/danfoss_ally/Code%20validation?label=Hass%20validation&style=plastic) ![Maintenance](https://img.shields.io/maintenance/yes/2022.svg?style=plastic&label=Integration%20maintained) [![downloads](https://img.shields.io/github/downloads/mtrab/danfoss_ally/total?style=plastic&label=Total%20downloads)](https://github.com/mtrab/danfoss_ally) [![Buy me a coffee](https://img.shields.io/static/v1?label=Buy%20me%20a%20coffee&message=and%20say%20thanks&color=orange&logo=buymeacoffee&logoColor=white&style=plastic)](https://www.buymeacoffee.com/mtrab)
 
 # Danfoss Ally
