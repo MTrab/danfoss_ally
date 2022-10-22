@@ -30,7 +30,6 @@ class AllySensorType(IntEnum):
     BATTERY = 1
     HUMIDITY = 2
 
-
 SENSORS = [
     SensorEntityDescription(
         key=AllySensorType.TEMPERATURE,
@@ -55,7 +54,7 @@ SENSORS = [
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         name="{} Humidity",
-    ),
+    )
 ]
 
 
@@ -69,14 +68,15 @@ async def async_setup_entry(
 
     for device in ally.devices:
         for sensor in SENSORS:
-            sensor_type = AllySensorType(sensor.key).name
+            sensor_type = AllySensorType(sensor.key).name.lower()
             if sensor_type in ally.devices[device]:
                 _LOGGER.debug(
                     "Found %s sensor for %s", sensor_type, ally.devices[device]["name"]
                 )
                 entities.extend(
-                    [AllySensor(ally, ally.devices[device]["name"], device, sensor)]
+                    [AllySensor(ally, ally.devices[device]["name"], device, sensor, ally.devices[device]["model"])]
                 )
+
 
     if entities:
         async_add_entities(entities, True)
@@ -86,18 +86,19 @@ class AllySensor(AllyDeviceEntity, SensorEntity):
     """Representation of an Ally sensor."""
 
     def __init__(
-        self, ally: DanfossAlly, name, device_id, description: SensorEntityDescription
+        self, ally: DanfossAlly, name, device_id, description: SensorEntityDescription, model = None
     ):
         """Initialize Ally binary_sensor."""
         self.entity_description = description
         self._ally = ally
         self._device = ally.devices[device_id]
         self._device_id = device_id
-        self._type = AllySensorType(description.key).name
-        super().__init__(name, device_id, self._type)
+        self._type = AllySensorType(description.key).name.lower()
+        super().__init__(name, device_id, self._type, model)
 
         _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
-
+        _LOGGER.debug("Creating Ally sensor %s --- Device: %s --- Model: %s --- Type: %s", self._device_id, self._device, model, self._type)
+        
         self._attr_native_value = None
         self._attr_extra_state_attributes = None
         self._attr_name = self.entity_description.name.format(name)
@@ -123,7 +124,7 @@ class AllySensor(AllyDeviceEntity, SensorEntity):
     @callback
     def _async_update_data(self):
         """Load data."""
-        _LOGGER.debug("Loading new sensor data for device %s", self._device_id)
+        _LOGGER.debug("Loading new sensor data for Ally Sensor for device %s", self._device_id)
         self._device = self._ally.devices[self._device_id]
 
         if self._type == "battery":
