@@ -38,6 +38,3 @@ UPDATE_TRACK = "update_track"
 
 ACTION_TYPE_SET_PRESET_TEMPERATURE = "set_preset_temperature"
 ATTR_SETPOINT = "setpoint"
-
-
-

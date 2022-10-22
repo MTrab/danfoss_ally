@@ -3,7 +3,6 @@ import logging
 
 import requests.exceptions
 import voluptuous as vol
-
 from homeassistant import config_entries, core, exceptions
 from homeassistant.core import callback
 from pydanfossally import DanfossAlly

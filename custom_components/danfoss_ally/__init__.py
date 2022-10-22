@@ -92,11 +92,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def _update(now):
         """Periodic update."""
         await allyconnector.async_update()
-    await _update(None)     #await hass.async_add_executor_job(allyconnector.update)
+    await _update(None)
 
     update_track = async_track_time_interval(
         hass,
-        _update, #lambda now: allyconnector.update(),
+        _update,
         timedelta(seconds=SCAN_INTERVAL),
     )
 

@@ -20,7 +20,6 @@
         "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]"
       }
     },
-
     "device_automation": {
       "condition_type": {
       },
@@ -30,5 +29,4 @@
         "set_preset_temperature": "Set preset temperature"
       }
     }
-
-}
+  }

@@ -29,28 +29,3 @@ class AllyDeviceEntity(Entity):
     def should_poll(self):
         """Do not poll."""
         return False
-
-
-class AllyClimateEntity(Entity):
-    """Base implementation for Danfoss Ally Thermostat."""
-
-    def __init__(self, name, device_id):
-        """Initialize a Danfoss Ally zone."""
-        super().__init__()
-        self._device_id = device_id
-        self._name = name
-
-    @property
-    def device_info(self):
-        """Return the device_info of the device."""
-        return {
-            "identifiers": {(DOMAIN, self._device_id)},
-            "name": self._name,
-            "manufacturer": DEFAULT_NAME,
-            "model": None,
-        }
-
-    @property
-    def should_poll(self):
-        """Do not poll."""
-        return False

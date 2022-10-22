@@ -4,8 +4,8 @@ import logging
 from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_CONNECTIVITY,
     DEVICE_CLASS_LOCK,
-    DEVICE_CLASS_WINDOW,
     DEVICE_CLASS_TAMPER,
+    DEVICE_CLASS_WINDOW,
     BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -69,8 +69,6 @@ async def async_setup_entry(
                     )
                 ]
             )
-    
-
 
     if entities:
         async_add_entities(entities, True)
@@ -105,7 +103,6 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             self._state = bool(self._device["online"])
         elif self._type == "banner control":
             self._state = bool(self._device["banner_ctrl"])
-
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
