@@ -97,7 +97,6 @@ class AllySensor(AllyDeviceEntity, SensorEntity):
         super().__init__(name, device_id, self._type, model)
 
         _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
-        _LOGGER.debug("Creating Ally sensor %s --- Device: %s --- Model: %s --- Type: %s", self._device_id, self._device, model, self._type)
         
         self._attr_native_value = None
         self._attr_extra_state_attributes = None
@@ -127,9 +126,5 @@ class AllySensor(AllyDeviceEntity, SensorEntity):
         _LOGGER.debug("Loading new sensor data for Ally Sensor for device %s", self._device_id)
         self._device = self._ally.devices[self._device_id]
 
-        if self._type == "battery":
-            self._attr_native_value = self._device["battery"]
-        elif self._type == "temperature":
-            self._attr_native_value = self._device["temperature"]
-        elif self._type == "humidity":
-            self._attr_native_value = self._device["humidity"]
+        if self._type in self._device:
+            self._attr_native_value = self._device[self._type]
