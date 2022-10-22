@@ -30,5 +30,7 @@ set_preset_temperature:
               value: "manual"
             - label: "Pause"
               value: "pause"
-            - label: "Holiday"
+            - label: "Holiday (Home)"
+              value: "holiday_sat"
+            - label: "Holiday (Away)"
               value: "holiday"

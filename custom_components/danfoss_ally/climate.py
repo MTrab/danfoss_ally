@@ -26,9 +26,10 @@ from . import AllyConnector
 from .const import (
     DATA,
     DOMAIN,
+    PRESET_HOLIDAY_AWAY,
+    PRESET_HOLIDAY_HOME,
     PRESET_MANUAL,
     PRESET_PAUSE,
-    PRESET_HOLIDAY,
     SIGNAL_ALLY_UPDATE_RECEIVED,
 )
 from .entity import AllyDeviceEntity
@@ -70,7 +71,8 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             PRESET_AWAY,
             PRESET_PAUSE,
             PRESET_MANUAL,
-            PRESET_HOLIDAY
+            PRESET_HOLIDAY_HOME,
+            PRESET_HOLIDAY_AWAY
         ]
         self._support_flags = support_flags
 
@@ -143,9 +145,14 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             if (
                 self._device["mode"] == "at_home"
                 or self._device["mode"] == "leaving_home"
+                or self._device["mode"] == "holiday_sat"
             ):
                 return HVAC_MODE_AUTO
-            elif (self._device["mode"] == "manual" or self._device["mode"] == "pause" or self._device["mode"] == "holiday_sat"):
+            elif (
+                self._device["mode"] == "manual"
+                or self._device["mode"] == "pause"
+                or self._device["mode"] == "holiday"
+            ):
                 return HVAC_MODE_HEAT
 
     @property
@@ -161,7 +168,9 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             elif self._device["mode"] == "manual":
                 return PRESET_MANUAL
             elif self._device["mode"] == "holiday_sat":
-                return PRESET_HOLIDAY
+                return PRESET_HOLIDAY_HOME
+            elif self._device["mode"] == "holiday":
+                return PRESET_HOLIDAY_AWAY
 
     @property
     def hvac_modes(self):
@@ -188,8 +197,10 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             mode = "pause"
         elif preset_mode == PRESET_MANUAL:
             mode = "manual"
-        elif preset_mode == PRESET_HOLIDAY:
+        elif preset_mode == PRESET_HOLIDAY_HOME:
             mode = "holiday_sat"
+        elif preset_mode == PRESET_HOLIDAY_AWAY:
+            mode = "holiday"
 
         if mode is None:
             return
@@ -320,8 +331,10 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             setpoint_code = "pause_setting"
         elif mode == "manual":
             setpoint_code = "manual_mode_fast"
-        elif mode == "holiday_sat":
+        elif mode == "holiday":
             setpoint_code = "holiday_setting"
+        elif mode == "holiday_sat":
+            setpoint_code = "at_home_setting"
         return setpoint_code
 
     def get_setpoint_for_current_mode(self):
