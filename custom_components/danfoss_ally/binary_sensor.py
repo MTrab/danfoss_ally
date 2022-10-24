@@ -32,7 +32,11 @@ async def async_setup_entry(
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally, ally.devices[device]["name"], device, "open window", ally.devices[device]["model"]
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "open window",
+                        ally.devices[device]["model"],
                     )
                 ]
             )
@@ -43,7 +47,11 @@ async def async_setup_entry(
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally, ally.devices[device]["name"], device, "child lock", ally.devices[device]["model"]
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "child lock",
+                        ally.devices[device]["model"],
                     )
                 ]
             )
@@ -54,18 +62,26 @@ async def async_setup_entry(
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally, ally.devices[device]["name"], device, "connectivity", ally.devices[device]["model"]
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "connectivity",
+                        ally.devices[device]["model"],
                     )
                 ]
             )
-        if 'banner_ctrl' in ally.devices[device]:
+        if "banner_ctrl" in ally.devices[device]:
             _LOGGER.debug(
                 "Found banner_ctrl detector for %s", ally.devices[device]["name"]
             )
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally, ally.devices[device]["name"], device, 'banner control', ally.devices[device]["model"]
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "banner control",
+                        ally.devices[device]["model"],
                     )
                 ]
             )
@@ -166,4 +182,4 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
         elif self._type == "connectivity":
             self._state = bool(self._device["online"])
         elif self._type == "banner control":
-            self._state = bool(self._device['banner_ctrl'])
+            self._state = bool(self._device["banner_ctrl"])

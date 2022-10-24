@@ -1,26 +1,28 @@
 """Provides device automations for Climate."""
 from __future__ import annotations
 
-import logging
-import voluptuous as vol
 import json
+import logging
 
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
+from homeassistant.components.climate import ATTR_PRESET_MODE, ATTR_PRESET_MODES
+from homeassistant.components.climate import DOMAIN as CLIMATE_DOMAIN
+from homeassistant.components.climate import SERVICE_SET_TEMPERATURE
 from homeassistant.const import (
     ATTR_ENTITY_ID,
+    ATTR_TEMPERATURE,
     CONF_DEVICE_ID,
     CONF_DOMAIN,
     CONF_ENTITY_ID,
     CONF_TYPE,
-    ATTR_TEMPERATURE,
 )
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import get_capability, get_supported_features
-from homeassistant.components.climate import DOMAIN as CLIMATE_DOMAIN, SERVICE_SET_TEMPERATURE, ATTR_PRESET_MODE, ATTR_PRESET_MODES
 
-from .const import DOMAIN, ACTION_TYPE_SET_PRESET_TEMPERATURE, ATTR_SETPOINT
+from .const import ACTION_TYPE_SET_PRESET_TEMPERATURE, ATTR_SETPOINT, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,7 +60,10 @@ async def async_get_actions(
             CONF_ENTITY_ID: entry.entity_id,
         }
 
-        _LOGGER.debug("Action: " + json.dumps({**base_action, CONF_TYPE: ACTION_TYPE_SET_PRESET_TEMPERATURE}))
+        _LOGGER.debug(
+            "Action: "
+            + json.dumps({**base_action, CONF_TYPE: ACTION_TYPE_SET_PRESET_TEMPERATURE})
+        )
 
         actions.append({**base_action, CONF_TYPE: ACTION_TYPE_SET_PRESET_TEMPERATURE})
         # if supported_features & const.SUPPORT_PRESET_MODE:
@@ -78,7 +83,7 @@ async def async_call_action_from_config(
         service_data[ATTR_TEMPERATURE] = config[ATTR_TEMPERATURE]
         if ATTR_PRESET_MODE in config:
             service_data[ATTR_PRESET_MODE] = config[ATTR_PRESET_MODE]
-        domain = DOMAIN     # danfoss_ally
+        domain = DOMAIN  # danfoss_ally
 
     await hass.services.async_call(
         domain, service, service_data, blocking=True, context=context
@@ -94,12 +99,11 @@ async def async_get_action_capabilities(hass, config):
     if action_type == ACTION_TYPE_SET_PRESET_TEMPERATURE:
         try:
             preset_modes = (
-                get_capability(hass, config[ATTR_ENTITY_ID], ATTR_PRESET_MODES)
-                or []
+                get_capability(hass, config[ATTR_ENTITY_ID], ATTR_PRESET_MODES) or []
             )
         except HomeAssistantError:
             preset_modes = []
-        
+
         preset_modes_kv = {}
         for entry in preset_modes:
             preset_modes_kv[entry.lower()] = entry.capitalize()

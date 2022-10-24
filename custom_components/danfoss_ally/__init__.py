@@ -92,6 +92,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def _update(now):
         """Periodic update."""
         await allyconnector.async_update()
+
     await _update(None)
 
     update_track = async_track_time_interval(
@@ -165,14 +166,21 @@ class AllyConnector:
         """Update API data."""
         _LOGGER.debug("Updating Danfoss Ally devices")
 
-        # Postpone poll if a recent change were made - Attempt to avoid UI glitches 
-        seconds_since_write = (datetime.utcnow() - self._latest_write_time).total_seconds()
-        if (seconds_since_write < 1):
-            _LOGGER.debug("Seconds since last write %f. Postponing update for 1 sec.", seconds_since_write)
+        # Postpone poll if a recent change were made - Attempt to avoid UI glitches
+        seconds_since_write = (
+            datetime.utcnow() - self._latest_write_time
+        ).total_seconds()
+        if seconds_since_write < 1:
+            _LOGGER.debug(
+                "Seconds since last write %f. Postponing update for 1 sec.",
+                seconds_since_write,
+            )
             await asyncio.sleep(1)
 
         # Poll API
-        await self.hass.async_add_executor_job(self.ally.getDeviceList)     #self.ally.getDeviceList()
+        await self.hass.async_add_executor_job(
+            self.ally.getDeviceList
+        )  # self.ally.getDeviceList()
         self._latest_poll_time = datetime.utcnow()
 
         for device in self.ally.devices:  # pylint: disable=consider-using-dict-items
@@ -184,15 +192,21 @@ class AllyConnector:
         """Return device list from API."""
         return self.ally.devices
 
-    def set_temperature(self, device_id: str, temperature: float, code = "manual_mode_fast") -> None:
+    def set_temperature(
+        self, device_id: str, temperature: float, code="manual_mode_fast"
+    ) -> None:
         """Set temperature for device_id."""
         self._latest_write_time = datetime.utcnow()
         self.ally.setTemperature(device_id, temperature, code)
 
         # Debug info - log if update was done approximately as the same time as write
-        seconds_since_poll = (datetime.utcnow() - self._latest_poll_time).total_seconds()
-        if (seconds_since_poll < 0.5):
-            _LOGGER.warn("set_temperature: Time since last poll %f sec.", seconds_since_poll)
+        seconds_since_poll = (
+            datetime.utcnow() - self._latest_poll_time
+        ).total_seconds()
+        if seconds_since_poll < 0.5:
+            _LOGGER.warn(
+                "set_temperature: Time since last poll %f sec.", seconds_since_poll
+            )
 
     def set_mode(self, device_id: str, mode: str) -> None:
         """Set operating mode for device_id."""
@@ -200,8 +214,10 @@ class AllyConnector:
         self.ally.setMode(device_id, mode)
 
         # Debug info - log if update was done approximately as the same time as write
-        seconds_since_poll = (datetime.utcnow() - self._latest_poll_time).total_seconds()
-        if (seconds_since_poll < 0.5):
+        seconds_since_poll = (
+            datetime.utcnow() - self._latest_poll_time
+        ).total_seconds()
+        if seconds_since_poll < 0.5:
             _LOGGER.warn("set_mode: Time since last poll %f sec.", seconds_since_poll)
 
     @property
