@@ -8,6 +8,8 @@ This is a custom component for Home Assistant to integrate the Danfoss Ally and 
 Danfoss are NOT willing to help sort their documentation.<br>
 At this moment I can only advise AGAINST buying Danfoss Ally, or if you do then avoid their gateway and use the thermostats directly via DeConz, Zigbee2MQTT or ZHA.*
 
+*ALL FURTHER DEVELOPMENT IS HALTED DUE TO DEFECTIVE API AND MISSING DOCUMENTATION/WILLINGNESS FROM DANFOSS - THERE WILL BE NO FURTHER RELEASES UNTIL THIS IS FIXED BY DANFOSS*
+
 ### Installation:
 
 #### HACS
