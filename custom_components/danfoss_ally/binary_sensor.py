@@ -4,6 +4,7 @@ import logging
 from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_CONNECTIVITY,
     DEVICE_CLASS_LOCK,
+    DEVICE_CLASS_TAMPER,
     DEVICE_CLASS_WINDOW,
     BinarySensorEntity,
 )
@@ -31,7 +32,7 @@ async def async_setup_entry(
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally, ally.devices[device]["name"], device, "open window"
+                        ally, ally.devices[device]["name"], device, "open window", ally.devices[device]["model"]
                     )
                 ]
             )
@@ -42,7 +43,7 @@ async def async_setup_entry(
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally, ally.devices[device]["name"], device, "child lock"
+                        ally, ally.devices[device]["name"], device, "child lock", ally.devices[device]["model"]
                     )
                 ]
             )
@@ -53,7 +54,18 @@ async def async_setup_entry(
             entities.extend(
                 [
                     AllyBinarySensor(
-                        ally, ally.devices[device]["name"], device, "connectivity"
+                        ally, ally.devices[device]["name"], device, "connectivity", ally.devices[device]["model"]
+                    )
+                ]
+            )
+        if 'banner_ctrl' in ally.devices[device]:
+            _LOGGER.debug(
+                "Found banner_ctrl detector for %s", ally.devices[device]["name"]
+            )
+            entities.extend(
+                [
+                    AllyBinarySensor(
+                        ally, ally.devices[device]["name"], device, 'banner control', ally.devices[device]["model"]
                     )
                 ]
             )
@@ -65,13 +77,13 @@ async def async_setup_entry(
 class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
     """Representation of an Ally binary_sensor."""
 
-    def __init__(self, ally, name, device_id, device_type):
+    def __init__(self, ally, name, device_id, device_type, model):
         """Initialize Ally binary_sensor."""
         self._ally = ally
         self._device = ally.devices[device_id]
         self._device_id = device_id
         self._type = device_type
-        super().__init__(name, device_id, device_type)
+        super().__init__(name, device_id, device_type, model)
 
         _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
 
@@ -86,9 +98,11 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
         elif self._type == "open window":
             self._state = bool(self._device["window_open"])
         elif self._type == "child lock":
-            self._state = bool(self._device["child_lock"])
+            self._state = not bool(self._device["child_lock"])
         elif self._type == "connectivity":
             self._state = bool(self._device["online"])
+        elif self._type == "banner control":
+            self._state = bool(self._device["banner_ctrl"])
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
@@ -123,10 +137,12 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             return DEVICE_CLASS_CONNECTIVITY
         elif self._type == "open window":
             return DEVICE_CLASS_WINDOW
-        elif self._type == "child_lock":
+        elif self._type == "child lock":
             return DEVICE_CLASS_LOCK
         elif self._type == "connectivity":
             return DEVICE_CLASS_CONNECTIVITY
+        elif self._type == "banner control":
+            return DEVICE_CLASS_TAMPER
         return None
 
     @callback
@@ -146,6 +162,8 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
         elif self._type == "open window":
             self._state = bool(self._device["window_open"])
         elif self._type == "child lock":
-            self._state = bool(self._device["child_lock"])
+            self._state = not bool(self._device["child_lock"])
         elif self._type == "connectivity":
             self._state = bool(self._device["online"])
+        elif self._type == "banner control":
+            self._state = bool(self._device['banner_ctrl'])

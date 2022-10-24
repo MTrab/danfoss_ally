@@ -1,0 +1,36 @@
+# Describes the format for available climate services
+
+set_preset_temperature:
+  name: Set preset temperature
+  description: Set target temperature of climate device.
+  target:
+    entity:
+      domain: climate
+  fields:
+    temperature:
+      name: Temperature
+      description: New target temperature for HVAC.
+      selector:
+        number:
+          min: 0
+          max: 250
+          step: 0.5
+          mode: box
+    preset_mode:
+      name: Preset mode
+      description: Optional. Using current preset mode if not specified.
+      selector:
+        select:
+          options:
+            - label: "Home"
+              value: "home"
+            - label: "Away"
+              value: "away"
+            - label: "Manual"
+              value: "manual"
+            - label: "Pause"
+              value: "pause"
+            - label: "Holiday (Home)"
+              value: "holiday_sat"
+            - label: "Holiday (Away)"
+              value: "holiday"
