@@ -9,7 +9,6 @@ set_preset_temperature:
       domain: climate
     device:
       integration: danfoss_ally
-      domain: climate
   fields:
     temperature:
       name: Temperature
