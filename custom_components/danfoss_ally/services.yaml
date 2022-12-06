@@ -46,10 +46,8 @@ set_window_state_open:
     entity:
       integration: danfoss_ally
       domain: climate
-      model: "Danfoss Ally™ Radiator Thermostat"
     device:
       integration: danfoss_ally
-      domain: climate
       model: "Danfoss Ally™ Radiator Thermostat"
   fields:
     window_open:
