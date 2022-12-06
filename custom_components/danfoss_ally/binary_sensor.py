@@ -6,11 +6,14 @@ from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_LOCK,
     DEVICE_CLASS_TAMPER,
     DEVICE_CLASS_WINDOW,
+    DEVICE_CLASS_HEAT,
     BinarySensorEntity,
+    BinarySensorEntityDescription
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import EntityCategory
 
 from .const import DATA, DOMAIN, SIGNAL_ALLY_UPDATE_RECEIVED
 from .entity import AllyDeviceEntity
@@ -55,7 +58,7 @@ async def async_setup_entry(
                     )
                 ]
             )
-        if not ally.devices[device]["isThermostat"]:
+        if "online" in ally.devices[device]: # not ally.devices[device]["isThermostat"]:
             _LOGGER.debug(
                 "Found connection sensor for %s", ally.devices[device]["name"]
             )
@@ -81,6 +84,21 @@ async def async_setup_entry(
                         ally.devices[device]["name"],
                         device,
                         "banner control",
+                        ally.devices[device]["model"],
+                    )
+                ]
+            )
+        if "switch_state" in ally.devices[device]:
+            _LOGGER.debug(
+                "Found Pre-Heating detector for %s", ally.devices[device]["name"]
+            )
+            entities.extend(
+                [
+                    AllyBinarySensor(
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "Pre-Heating",
                         ally.devices[device]["model"],
                     )
                 ]
@@ -117,8 +135,14 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             self._state = not bool(self._device["child_lock"])
         elif self._type == "connectivity":
             self._state = bool(self._device["online"])
+            self.entity_description = BinarySensorEntityDescription(
+                key = 0,
+                entity_category = EntityCategory.DIAGNOSTIC
+            )
         elif self._type == "banner control":
             self._state = bool(self._device["banner_ctrl"])
+        elif self._type == "Pre-Heating":
+            self._state = bool(self._device["switch_state"]) and "switch" in self._device and bool(self._device["switch"])
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
@@ -159,6 +183,8 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             return DEVICE_CLASS_CONNECTIVITY
         elif self._type == "banner control":
             return DEVICE_CLASS_TAMPER
+        elif self._type == "Pre-Heating":
+            return DEVICE_CLASS_HEAT
         return None
 
     @callback
@@ -183,3 +209,6 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             self._state = bool(self._device["online"])
         elif self._type == "banner control":
             self._state = bool(self._device["banner_ctrl"])
+        elif self._type == "Pre-Heating":
+            self._state = bool(self._device["switch_state"]) and "switch" in self._device and bool(self._device["switch"])
+

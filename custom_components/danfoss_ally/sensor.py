@@ -29,7 +29,7 @@ class AllySensorType(IntEnum):
     TEMPERATURE = 0
     BATTERY = 1
     HUMIDITY = 2
-
+    FLOOR_TEMPERATURE = 3
 
 SENSORS = [
     SensorEntityDescription(
@@ -55,6 +55,14 @@ SENSORS = [
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         name="{} humidity",
+    ),
+    SensorEntityDescription(
+        key=AllySensorType.FLOOR_TEMPERATURE,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        entity_category=None,
+        native_unit_of_measurement=TEMP_CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        name="{} floor temperature",
     ),
 ]
 
@@ -114,7 +122,7 @@ class AllySensor(AllyDeviceEntity, SensorEntity):
         self._attr_native_value = None
         self._attr_extra_state_attributes = None
         self._attr_name = self.entity_description.name.format(name)
-        self._attr_unique_id = f"{self._type}_{device_id}_ally"
+        self._attr_unique_id = "{}_{}_ally".format(self._type.replace("_", " "), device_id)
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
