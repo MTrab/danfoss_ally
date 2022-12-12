@@ -5,7 +5,10 @@ set_preset_temperature:
   description: Set target temperature of climate device.
   target:
     entity:
+      integration: danfoss_ally
       domain: climate
+    device:
+      integration: danfoss_ally
   fields:
     temperature:
       name: Temperature
@@ -34,3 +37,21 @@ set_preset_temperature:
               value: "holiday_sat"
             - label: "Holiday (Away)"
               value: "holiday"
+
+set_window_state_open:
+  name: Set window open state
+  description: Tell a radiator thermostat if window is open or closed (Icon does not have this feature). It takes a while for it to react.
+  target:
+    entity:
+      integration: danfoss_ally
+      domain: climate
+    device:
+      integration: danfoss_ally
+      model: "Danfoss Ally™ Radiator Thermostat"
+  fields:
+    window_open:
+      name: Window open
+      description: True = window open, false = closed
+      required: true
+      selector:
+        boolean:

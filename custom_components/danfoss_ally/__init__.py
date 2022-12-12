@@ -1,4 +1,5 @@
 """Adds support for Danfoss Ally Gateway."""
+from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -26,7 +27,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-ALLY_COMPONENTS = ["binary_sensor", "climate", "sensor"]
+ALLY_COMPONENTS = ["binary_sensor", "climate", "sensor", "switch"]
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
 SCAN_INTERVAL = 15
@@ -219,6 +220,12 @@ class AllyConnector:
         ).total_seconds()
         if seconds_since_poll < 0.5:
             _LOGGER.warn("set_mode: Time since last poll %f sec.", seconds_since_poll)
+
+    def send_commands(self, device_id: str, listofcommands: list[Tuple[str, str]], postponeupdate: bool) -> None:
+        """Send list of commands for given device."""
+        if postponeupdate:
+            self._latest_write_time = datetime.utcnow()
+        self.ally.sendCommand(device_id, listofcommands)
 
     @property
     def authorized(self) -> bool:
