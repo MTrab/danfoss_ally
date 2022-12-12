@@ -1,5 +1,6 @@
 """Adds support for Danfoss Ally Gateway."""
 from __future__ import annotations
+
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -221,7 +222,12 @@ class AllyConnector:
         if seconds_since_poll < 0.5:
             _LOGGER.warn("set_mode: Time since last poll %f sec.", seconds_since_poll)
 
-    def send_commands(self, device_id: str, listofcommands: list[Tuple[str, str]], postponeupdate: bool) -> None:
+    def send_commands(
+        self,
+        device_id: str,
+        listofcommands: list[Tuple[str, str]],
+        postponeupdate: bool,
+    ) -> None:
         """Send list of commands for given device."""
         if postponeupdate:
             self._latest_write_time = datetime.utcnow()

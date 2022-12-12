@@ -4,7 +4,7 @@ import logging
 
 import voluptuous as vol
 from homeassistant.components.climate import ClimateEntity
-from homeassistant.components.climate.const import (
+from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SUPPORT_TARGET_TEMPERATURE,
     ATTR_HVAC_MODE,
     ATTR_PRESET_MODE,
     CURRENT_HVAC_HEAT,
@@ -13,9 +13,7 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_HEAT,
     PRESET_AWAY,
     PRESET_HOME,
-#    SUPPORT_PRESET_MODE,
-#    SUPPORT_TARGET_TEMPERATURE,
-    ClimateEntityFeature
+    ClimateEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
@@ -67,8 +65,20 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._unique_id = f"climate_{device_id}_ally"
 
         # Check if we should fall back to attribute temp_set (if thermostat does not have manual_mode_fast, at_home_setting, leaving_home_setting, pause_setting, holiday_setting but does have temp_set (maybe it is an older type of thermostat))
-        self._fallback_to_temp_set = (not ("manual_mode_fast" in self._device and "at_home_setting" in self._device and "leaving_home_setting" in self._device and "pause_setting" in self._device and "holiday_setting" in self._device)) and "temp_set" in self._device
-        _LOGGER.debug("Device_id: %s --- _fallback_to_temp_set: %s", self._device_id, self._fallback_to_temp_set)
+        self._fallback_to_temp_set = (
+            not (
+                "manual_mode_fast" in self._device
+                and "at_home_setting" in self._device
+                and "leaving_home_setting" in self._device
+                and "pause_setting" in self._device
+                and "holiday_setting" in self._device
+            )
+        ) and "temp_set" in self._device
+        _LOGGER.debug(
+            "Device_id: %s --- _fallback_to_temp_set: %s",
+            self._device_id,
+            self._fallback_to_temp_set,
+        )
 
         self._supported_hvac_modes = supported_hvac_modes
         self._supported_preset_modes = [
@@ -287,7 +297,9 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             value = "open" if bopen else "close"
 
             _LOGGER.warn("set_window_state_open: %s", value)
-            self._ally.send_commands(self._device_id, [("window_state_info", value)], False)
+            self._ally.send_commands(
+                self._device_id, [("window_state_info", value)], False
+            )
 
     @property
     def available(self):
@@ -425,15 +437,13 @@ async def async_setup_entry(
             vol.Optional("preset_mode"): str,
         },
         "set_preset_temperature",
-        [ClimateEntityFeature.TARGET_TEMPERATURE]
+        [ClimateEntityFeature.TARGET_TEMPERATURE],
     )
     platform.async_register_entity_service(
         "set_window_state_open",
-        {
-            vol.Required("window_open"): vol.Boolean()
-        },
+        {vol.Required("window_open"): vol.Boolean()},
         "set_window_state_open",
-        [8192]
+        [8192],
     )
 
     ally: AllyConnector = hass.data[DOMAIN][entry.entry_id][DATA]
@@ -453,7 +463,7 @@ def _generate_entities(ally: AllyConnector):
                 ally,
                 ally.devices[device]["name"],
                 device,
-                ally.devices[device]["model"]
+                ally.devices[device]["model"],
             )
             if entity:
                 entities.append(entity)
@@ -463,8 +473,10 @@ def _generate_entities(ally: AllyConnector):
 def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyClimate:
     """Create a Danfoss Ally climate entity."""
 
-#    support_flags = SUPPORT_TARGET_TEMPERATURE | SUPPORT_PRESET_MODE
-    support_flags = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
+    #    support_flags = SUPPORT_TARGET_TEMPERATURE | SUPPORT_PRESET_MODE
+    support_flags = (
+        ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
+    )
     supported_hvac_modes = [HVAC_MODE_AUTO, HVAC_MODE_HEAT]
     heat_min_temp = 4.5
     heat_max_temp = 35.0

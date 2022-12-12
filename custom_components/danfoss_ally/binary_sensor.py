@@ -3,12 +3,12 @@ import logging
 
 from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_CONNECTIVITY,
+    DEVICE_CLASS_HEAT,
     DEVICE_CLASS_LOCK,
     DEVICE_CLASS_TAMPER,
     DEVICE_CLASS_WINDOW,
-    DEVICE_CLASS_HEAT,
     BinarySensorEntity,
-    BinarySensorEntityDescription
+    BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -58,7 +58,9 @@ async def async_setup_entry(
                     )
                 ]
             )
-        if "online" in ally.devices[device]: # not ally.devices[device]["isThermostat"]:
+        if (
+            "online" in ally.devices[device]
+        ):  # not ally.devices[device]["isThermostat"]:
             _LOGGER.debug(
                 "Found connection sensor for %s", ally.devices[device]["name"]
             )
@@ -136,13 +138,16 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
         elif self._type == "connectivity":
             self._state = bool(self._device["online"])
             self.entity_description = BinarySensorEntityDescription(
-                key = 0,
-                entity_category = EntityCategory.DIAGNOSTIC
+                key=0, entity_category=EntityCategory.DIAGNOSTIC
             )
         elif self._type == "banner control":
             self._state = bool(self._device["banner_ctrl"])
         elif self._type == "Pre-Heating":
-            self._state = bool(self._device["switch_state"]) and "switch" in self._device and bool(self._device["switch"])
+            self._state = (
+                bool(self._device["switch_state"])
+                and "switch" in self._device
+                and bool(self._device["switch"])
+            )
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
@@ -210,5 +215,8 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
         elif self._type == "banner control":
             self._state = bool(self._device["banner_ctrl"])
         elif self._type == "Pre-Heating":
-            self._state = bool(self._device["switch_state"]) and "switch" in self._device and bool(self._device["switch"])
-
+            self._state = (
+                bool(self._device["switch_state"])
+                and "switch" in self._device
+                and bool(self._device["switch"])
+            )

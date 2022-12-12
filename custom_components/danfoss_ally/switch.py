@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import logging
-from enum import IntEnum
 from datetime import datetime, timedelta
+from enum import IntEnum
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -20,6 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 class AllySwitchType(IntEnum):
     """Supported sensor types."""
 
+
 #    DETECT_WINDOW_OPEN = 0
 
 SWITCHES = [
@@ -28,19 +29,18 @@ SWITCHES = [
         entity_category=EntityCategory.CONFIG,
         name="{} Open window detection",
         device_class="switch",
-        icon = "mdi:window-open-variant",
-        entity_registry_enabled_default = False
+        icon="mdi:window-open-variant",
+        entity_registry_enabled_default=False,
     ),
     SwitchEntityDescription(
         key="switch",
         entity_category=EntityCategory.CONFIG,
         name="{} Pre-Heat",
         device_class="switch",
-        icon = "mdi:heat-wave",
-        entity_registry_enabled_default = False
-    )
+        icon="mdi:heat-wave",
+        entity_registry_enabled_default=False,
+    ),
 ]
-
 
 
 async def async_setup_entry(
@@ -65,10 +65,18 @@ async def async_setup_entry(
         #             )
         #         ]
         #     )
-        if "model" in ally.devices[device] and ally.devices[device]["model"].lower() != "icon zigbee module":   # Do not show Pre-Hear for zigbee module
+        if (
+            "model" in ally.devices[device]
+            and ally.devices[device]["model"].lower() != "icon zigbee module"
+        ):  # Do not show Pre-Hear for zigbee module
             for switch in SWITCHES:
-                if switch.key in ["window_toggle", "switch"] and switch.key in ally.devices[device]:
-                    _LOGGER.debug("Found switch for setting: %s", ally.devices[device]["name"])
+                if (
+                    switch.key in ["window_toggle", "switch"]
+                    and switch.key in ally.devices[device]
+                ):
+                    _LOGGER.debug(
+                        "Found switch for setting: %s", ally.devices[device]["name"]
+                    )
                     entities.extend(
                         [
                             AllyGenericSwitch(
@@ -85,12 +93,18 @@ async def async_setup_entry(
         async_add_entities(entities, True)
 
 
-
-
 class AllyBaseSwitch(AllyDeviceEntity, SwitchEntity):
     """Representation of an Ally binary_sensor."""
 
-    def __init__(self, ally, name, device_id, description: SwitchEntityDescription, model, skipdelayafterwrite = 2):
+    def __init__(
+        self,
+        ally,
+        name,
+        device_id,
+        description: SwitchEntityDescription,
+        model,
+        skipdelayafterwrite=2,
+    ):
         """Initialize Ally switch."""
         self.entity_description = description
         self._ally = ally
@@ -104,7 +118,7 @@ class AllyBaseSwitch(AllyDeviceEntity, SwitchEntity):
         super().__init__(name, device_id, self._type, model)
 
         _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
-        
+
         self._attr_is_on = None
         self._attr_extra_state_attributes = None
         self._attr_name = self.entity_description.name.format(name)
@@ -125,7 +139,11 @@ class AllyBaseSwitch(AllyDeviceEntity, SwitchEntity):
     def _async_update_callback(self):
         """Update and write state."""
 
-        if self._latest_write_time is None or (datetime.utcnow() - self._latest_write_time).total_seconds() >= self._skipdelayafterwrite:
+        if (
+            self._latest_write_time is None
+            or (datetime.utcnow() - self._latest_write_time).total_seconds()
+            >= self._skipdelayafterwrite
+        ):
             _LOGGER.debug("Loading new switch data for device %s", self._device_id)
             self._device = self._ally.devices[self._device_id]
             self._async_update_data()
@@ -137,7 +155,6 @@ class AllyBaseSwitch(AllyDeviceEntity, SwitchEntity):
         self._latest_write_time = datetime.utcnow()
         self._attr_is_on = new_state
         self.async_write_ha_state()
-
 
 
 # class AllyOpenWindowDetectionSwitch(AllyBaseSwitch):
@@ -165,8 +182,9 @@ class AllyBaseSwitch(AllyDeviceEntity, SwitchEntity):
 
 
 class AllyGenericSwitch(AllyBaseSwitch):
-
-    def __init__(self, ally, name, device_id, description: SwitchEntityDescription, model):
+    def __init__(
+        self, ally, name, device_id, description: SwitchEntityDescription, model
+    ):
         self._ally_attr = description.key
         super().__init__(ally, name, device_id, description, model, 2)
         self._async_update_data()
@@ -184,7 +202,6 @@ class AllyGenericSwitch(AllyBaseSwitch):
     @callback
     def _async_update_data(self):
         """Load data."""
-        self._attr_available = (self._ally_attr in self._device)
+        self._attr_available = self._ally_attr in self._device
         if self._attr_available:
             self._attr_is_on = self._device[self._ally_attr]
-
