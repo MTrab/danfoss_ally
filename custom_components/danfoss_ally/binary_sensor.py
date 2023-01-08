@@ -2,13 +2,9 @@
 import logging
 
 from homeassistant.components.binary_sensor import (
-    DEVICE_CLASS_CONNECTIVITY,
-    DEVICE_CLASS_HEAT,
-    DEVICE_CLASS_LOCK,
-    DEVICE_CLASS_TAMPER,
-    DEVICE_CLASS_WINDOW,
     BinarySensorEntity,
     BinarySensorEntityDescription,
+    BinarySensorDeviceClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -179,17 +175,17 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
     def device_class(self):
         """Return the class of this sensor."""
         if self._type == "link":
-            return DEVICE_CLASS_CONNECTIVITY
+            return BinarySensorDeviceClass.CONNECTIVITY
         elif self._type == "open window":
-            return DEVICE_CLASS_WINDOW
+            return BinarySensorDeviceClass.WINDOW
         elif self._type == "child lock":
-            return DEVICE_CLASS_LOCK
+            return BinarySensorDeviceClass.LOCK
         elif self._type == "connectivity":
-            return DEVICE_CLASS_CONNECTIVITY
+            return BinarySensorDeviceClass.CONNECTIVITY
         elif self._type == "banner control":
-            return DEVICE_CLASS_TAMPER
+            return BinarySensorDeviceClass.TAMPER
         elif self._type == "Pre-Heating":
-            return DEVICE_CLASS_HEAT
+            return BinarySensorDeviceClass.HEAT
         return None
 
     @callback
