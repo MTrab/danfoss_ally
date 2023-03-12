@@ -30,6 +30,10 @@ class AllySensorType(IntEnum):
     BATTERY = 1
     HUMIDITY = 2
     FLOOR_TEMPERATURE = 3
+    VALVE_OPENING = 4
+    LOAD_ESTIMATE = 5
+    LOAD_ROOM_MEAN = 6
+    EXTERNAL_SENSOR_TEMPERATURE = 7
 
 
 SENSORS = [
@@ -64,6 +68,38 @@ SENSORS = [
         native_unit_of_measurement=TEMP_CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         name="{} floor temperature",
+    ),
+    SensorEntityDescription(
+        key=AllySensorType.VALVE_OPENING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement=PERCENTAGE,
+        name="{} valve opening",
+        icon="mdi:pipe-valve",
+    ),
+    SensorEntityDescription(
+        key=AllySensorType.LOAD_ESTIMATE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="",
+        name="{} load estimate",
+        icon="mdi:progress-helper",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=AllySensorType.LOAD_ROOM_MEAN,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="",
+        name="{} load room mean",
+        icon="mdi:progress-star",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=AllySensorType.EXTERNAL_SENSOR_TEMPERATURE,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        entity_category=None,
+        native_unit_of_measurement=TEMP_CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        name="{} external sensor temperature",
+        entity_registry_enabled_default=False,
     ),
 ]
 
@@ -152,5 +188,16 @@ class AllySensor(AllyDeviceEntity, SensorEntity):
         )
         self._device = self._ally.devices[self._device_id]
 
-        if self._type in self._device:
+        if (
+            self.entity_description.key == AllySensorType.TEMPERATURE
+            and "local_temperature" in self._device
+        ):
+            self._attr_native_value = self._device["local_temperature"]
+        elif (
+            self.entity_description.key == AllySensorType.EXTERNAL_SENSOR_TEMPERATURE
+            and "ext_measured_rs" in self._device
+            and self._device["ext_measured_rs"] != -80
+        ):
+            self._attr_native_value = self._device["ext_measured_rs"]
+        elif self._type in self._device:
             self._attr_native_value = self._device[self._type]

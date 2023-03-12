@@ -1,7 +1,7 @@
 """Support for Danfoss Ally thermostats."""
 import functools as ft
 import logging
-
+from datetime import datetime
 import voluptuous as vol
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SUPPORT_TARGET_TEMPERATURE,
@@ -18,7 +18,7 @@ from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SU
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_platform
+from homeassistant.helpers import entity_platform, config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from . import AllyConnector
@@ -94,11 +94,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._available = False
 
         # Current temperature
-        if "temperature" in self._device:
-            self._cur_temp = self._device["temperature"]
-        else:
-            # TEMPORARY fix for missing temperature sensor
-            self._cur_temp = self.get_setpoint_for_current_mode()
+        self._cur_temp = self.get_current_temperature()
 
         # Low temperature set in Ally app
         if "lower_temp" in self._device:
@@ -114,6 +110,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
         self._heat_step = heat_step
         self._target_temp = None
+        self._ext_temp_last_update = None
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
@@ -144,9 +141,19 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
     @property
     def current_temperature(self):
         """Return the sensor temperature."""
-        # return self._cur_temp
+        return self.get_current_temperature()
+
+    def get_current_temperature(self):
+        """Return current temperature."""
         if "temperature" in self._device:
-            return self._device["temperature"]
+            if (
+                "room_sensor" in self._device
+                and self._device["room_sensor"]
+                and "external_sensor_temperature" in self._device
+            ):
+                return self._device["external_sensor_temperature"]
+            else:
+                return self._device["temperature"]
         else:
             return self.get_setpoint_for_current_mode()
 
@@ -287,19 +294,87 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             self.async_write_ha_state()
 
     async def set_preset_temperature(self, **kwargs):
+        """Service call to set new target temperature."""
         await self.hass.async_add_executor_job(
             ft.partial(self.set_temperature, **kwargs)
         )
 
     def set_window_state_open(self, **kwargs):
+        """Tells thermostat that a window is open, as alternative to it detecting it itself"""
         if "window_open" in kwargs:
             bopen: bool = kwargs.get("window_open")
             value = "open" if bopen else "close"
 
-            _LOGGER.warn("set_window_state_open: %s", value)
+            _LOGGER.debug("set_window_state_open: %s", value)
             self._ally.send_commands(
                 self._device_id, [("window_state_info", value)], False
             )
+
+    def set_external_temperature(self, **kwargs):
+        """Writes an externally measured temperature to the thermostat, similar to a room sensor"""
+        temp = None
+        if "temperature" in kwargs:
+            temp = kwargs.get("temperature")
+
+        temp_10 = -800
+        temp_100 = -8000
+        if isinstance(temp, float):
+            temp_10 = int(round(temp * 10, 0))
+            temp_100 = int(round(temp * 100, 0))
+
+        prev_ext_temp = (
+            -800
+            if ("external_sensor_temperature" not in self._device)
+            else int(self._device["external_sensor_temperature"] * 10)
+        )
+
+        # Room Sensor Mode (allows Covered Radiators), as opposed to Auto Offset Mode (for Exposed Radiators)
+        room_sensor_mode = (
+            True
+            if ("radiator_covered" not in self._device)
+            else self._device["radiator_covered"]
+        )
+
+        most_frequent_update = (5 * 60) if (room_sensor_mode) else (30 * 60)
+
+        if self._ext_temp_last_update is not None:
+            _LOGGER.debug(
+                "Time delta: %s seconds, Prev: %d, Set %d, room_sensor_mode: %d, most_frequent_update: %d seconds",
+                round(
+                    (datetime.utcnow() - self._ext_temp_last_update).total_seconds(), 1
+                ),
+                prev_ext_temp,
+                temp_10,
+                room_sensor_mode,
+                most_frequent_update,
+            )
+
+        # Limit updates almost as recommended in the guide: https://assets.danfoss.com/documents/193613/AM375549618098en-000102.pdf
+        if (
+            self._ext_temp_last_update is None
+            or (datetime.utcnow() - self._ext_temp_last_update).total_seconds()
+            >= most_frequent_update
+            or prev_ext_temp != temp_10
+        ):
+            if temp_10 != -800:
+                _LOGGER.debug("Set external temperature: %s", temp)
+            else:
+                _LOGGER.debug("Disable external temperature")
+            self._ext_temp_last_update = datetime.utcnow()
+            self._ally.send_commands(
+                self._device_id,
+                [
+                    ("sensor_avg_temp", temp_10),
+                    ("ext_measured_rs", temp_100),
+                ],
+                False,
+            )
+            # Update local copy and UI
+            self._device["external_sensor_temperature"] = temp_10 / 10
+            self._device["ext_measured_rs"] = temp_100 / 100
+            self.async_write_ha_state()
+        else:
+            _LOGGER.debug("Skip setting external temperature")
 
     @property
     def available(self):
@@ -441,8 +516,16 @@ async def async_setup_entry(
     )
     platform.async_register_entity_service(
         "set_window_state_open",
-        {vol.Required("window_open"): vol.Boolean()},
+        {vol.Required("window_open"): cv.boolean},
         "set_window_state_open",
+        [8192],
+    )
+    platform.async_register_entity_service(
+        "set_external_temperature",
+        {
+            vol.Optional("temperature"): vol.Any(vol.Coerce(float), None, str),
+        },
+        "set_external_temperature",
         [8192],
     )
 

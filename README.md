@@ -23,20 +23,24 @@ This is a custom component for Home Assistant to integrate the Danfoss Ally and 
 
 First of all you need to go and create an api-key and secret
 
-* Navigate to https://developer.danfoss.com
-* Create Danfoss developer account and login *<u><b>NOTE:</b> Use the same email as used in the Danfoss Ally app for pairing your gateway</u>*
-* Go to https://developer.danfoss.com/my-apps and click "New App"
-* Give the app a name and description (naming and description is not of any importance as it's only for your use)
-* Make sure to enable Danfoss Ally API
-* Click create
-* Save your key and secret - these will be used when adding the integration
-* Go to Home Assistant > Settings > Integrations
-* Add Danfoss Ally integration *(If it doesn't show, try CTRL+F5 to force a refresh of the page)*
-* Enter API key and secret
+- Navigate to https://developer.danfoss.com
+- Create Danfoss developer account and login _<u><b>NOTE:</b> Use the same email as used in the Danfoss Ally app for pairing your gateway</u>_
+- Go to https://developer.danfoss.com/my-apps and click "New App"
+- Give the app a name and description (naming and description is not of any importance as it's only for your use)
+- Make sure to enable Danfoss Ally API
+- Click create
+- Save your key and secret - these will be used when adding the integration
+- Go to Home Assistant > Settings > Integrations
+- Add Danfoss Ally integration _(If it doesn't show, try CTRL+F5 to force a refresh of the page)_
+- Enter API key and secret
 
 Voila
 
+## Usage
+
+See: [Usage.md](Usage.md)
+
 ## Known issues
 
-* Inconsistency between API and app, devices are not updating correctly between API and app and sometimes the devices renders offline in the app - this is a Danfoss issue and not this integration
-* Floorheating modules (Icon) are not reporting the actual room temperature in the API - this is a Danfoss issue and not this integration
+- Inconsistency between API and app, devices are not updating correctly between API and app and sometimes the devices renders offline in the app - this is a Danfoss issue and not this integration
+- Floorheating modules (Icon) are not reporting the actual room temperature in the API - this is a Danfoss issue and not this integration
