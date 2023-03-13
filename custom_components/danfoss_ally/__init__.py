@@ -14,9 +14,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import Throttle
-
 from pydanfossally import DanfossAlly, exceptions
-
 
 from .const import (
     CONF_KEY,
@@ -104,7 +102,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             if not _update.error_reported or _LOGGER.isEnabledFor(logging.DEBUG):
                 _update.error_reported = True
                 _LOGGER.error("Timeout connecting to Danfoss Ally")
-        except (exceptions.HTTPException) as err:
+        except exceptions.HTTPException as err:
             if not _update.error_reported or _LOGGER.isEnabledFor(logging.DEBUG):
                 _update.error_reported = True
                 _LOGGER.error("HTTP error: %s", str(err.__cause__))

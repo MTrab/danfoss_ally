@@ -5,10 +5,7 @@ import logging
 from datetime import datetime
 from enum import IntEnum
 
-from homeassistant.components.select import (
-    SelectEntity,
-    SelectEntityDescription,
-)
+from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -216,7 +213,6 @@ class AllyHcsSelect(AllyBaseSelect):
         """Load data."""
         self._attr_available = self._ally_attr in self._device
         if self._attr_available:
-
             value = int(self._device[self._ally_attr]) & 0x0F
             option = None
             for item in self._options:
