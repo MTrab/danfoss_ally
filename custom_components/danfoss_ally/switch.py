@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import IntEnum
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
@@ -40,6 +40,30 @@ SWITCHES = [
         icon="mdi:heat-wave",
         entity_registry_enabled_default=False,
     ),
+    SwitchEntityDescription(
+        key="load_balance_enable",
+        entity_category=EntityCategory.CONFIG,
+        name="{} Load balance",
+        device_class="switch",
+        icon="mdi:scale-balance",
+        entity_registry_enabled_default=False,
+    ),
+    SwitchEntityDescription(
+        key="radiator_covered",
+        entity_category=EntityCategory.CONFIG,
+        name="{} Radiator covered",
+        device_class="switch",
+        icon="mdi:radiator-disabled",
+        entity_registry_enabled_default=False,
+    ),
+    SwitchEntityDescription(
+        key="heat_available",
+        entity_category=EntityCategory.CONFIG,
+        name="{} Heat available",
+        device_class="switch",
+        icon="mdi:thermometer-lines",
+        entity_registry_enabled_default=False,
+    ),
 ]
 
 
@@ -71,7 +95,14 @@ async def async_setup_entry(
         ):  # Do not show Pre-Hear for zigbee module
             for switch in SWITCHES:
                 if (
-                    switch.key in ["window_toggle", "switch"]
+                    switch.key
+                    in [
+                        "window_toggle",
+                        "switch",
+                        "load_balance_enable",
+                        "radiator_covered",
+                        "heat_available",
+                    ]
                     and switch.key in ally.devices[device]
                 ):
                     _LOGGER.debug(
@@ -94,7 +125,7 @@ async def async_setup_entry(
 
 
 class AllyBaseSwitch(AllyDeviceEntity, SwitchEntity):
-    """Representation of an Ally binary_sensor."""
+    """Base class of a switch"""
 
     def __init__(
         self,
@@ -148,13 +179,48 @@ class AllyBaseSwitch(AllyDeviceEntity, SwitchEntity):
             self._device = self._ally.devices[self._device_id]
             self._async_update_data()
         else:
-            _LOGGER.debug("Skip update: %s, %s", self._device_id, self._ally_attr)
+            _LOGGER.debug("Skip update: %s, %s", self._device_id, self._type)
         self.async_write_ha_state()
 
-    def _updateUI(self, new_state: bool):
+    def update_ui(self, new_state: bool):
+        """Update UI."""
         self._latest_write_time = datetime.utcnow()
         self._attr_is_on = new_state
         self.async_write_ha_state()
+
+    @callback
+    def _async_update_data(self):
+        """Virtual function. Override in derived class to define update method."""
+        raise NotImplementedError()
+
+
+class AllyGenericSwitch(AllyBaseSwitch):
+    """Generic switch: description.key must be the name of the ally attribute."""
+
+    def __init__(
+        self, ally, name, device_id, description: SwitchEntityDescription, model
+    ):
+        """Initialize Ally generic switch."""
+        self._ally_attr = description.key
+        super().__init__(ally, name, device_id, description, model, 2)
+        self._async_update_data()
+
+    def turn_on(self, **kwargs):
+        """Turn the switch on."""
+        self._ally.send_commands(self._device_id, [(self._ally_attr, True)], False)
+        super().update_ui(True)
+
+    def turn_off(self, **kwargs):
+        """Turn the switch off."""
+        self._ally.send_commands(self._device_id, [(self._ally_attr, False)], False)
+        super().update_ui(False)
+
+    @callback
+    def _async_update_data(self):
+        """Load data."""
+        self._attr_available = self._ally_attr in self._device
+        if self._attr_available:
+            self._attr_is_on = self._device[self._ally_attr]
 
 
 # class AllyOpenWindowDetectionSwitch(AllyBaseSwitch):
@@ -166,12 +232,12 @@ class AllyBaseSwitch(AllyDeviceEntity, SwitchEntity):
 #     def turn_on(self, **kwargs):
 #         """Turn the switch on."""
 #         self._ally.send_commands(self._device_id, [("window_toggle", True)], False)
-#         super()._updateUI(True)
+#         super().update_ui(True)
 
 #     def turn_off(self, **kwargs):
 #         """Turn the switch off."""
 #         self._ally.send_commands(self._device_id, [("window_toggle", False)], False)
-#         super()._updateUI(False)
+#         super().update_ui(False)
 
 #     @callback
 #     def _async_update_data(self):
@@ -179,29 +245,3 @@ class AllyBaseSwitch(AllyDeviceEntity, SwitchEntity):
 #         self._attr_available = ("window_toggle" in self._device)
 #         if self._attr_available:
 #             self._attr_is_on = self._device["window_toggle"]
-
-
-class AllyGenericSwitch(AllyBaseSwitch):
-    def __init__(
-        self, ally, name, device_id, description: SwitchEntityDescription, model
-    ):
-        self._ally_attr = description.key
-        super().__init__(ally, name, device_id, description, model, 2)
-        self._async_update_data()
-
-    def turn_on(self, **kwargs):
-        """Turn the switch on."""
-        self._ally.send_commands(self._device_id, [(self._ally_attr, True)], False)
-        super()._updateUI(True)
-
-    def turn_off(self, **kwargs):
-        """Turn the switch off."""
-        self._ally.send_commands(self._device_id, [(self._ally_attr, False)], False)
-        super()._updateUI(False)
-
-    @callback
-    def _async_update_data(self):
-        """Load data."""
-        self._attr_available = self._ally_attr in self._device
-        if self._attr_available:
-            self._attr_is_on = self._device[self._ally_attr]

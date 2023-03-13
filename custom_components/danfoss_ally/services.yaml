@@ -55,3 +55,28 @@ set_window_state_open:
       required: true
       selector:
         boolean:
+
+set_external_temperature:
+  name: Set external temperature
+  description: Sends an external temperature measurement to a radiator thermostat. It is similar to what an Ally Room Sensor does.
+  target:
+    entity:
+      integration: danfoss_ally
+      domain: climate
+    device:
+      integration: danfoss_ally
+      model: "Danfoss Ally™ Radiator Thermostat"
+  fields:
+    temperature:
+      name: Temperature
+      description: Temperature to send to thermostat. If not set or unknown will disable the external temperature.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.1
+          mode: box
+          unit_of_measurement: "ºC"
+
+

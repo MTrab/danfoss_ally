@@ -14,7 +14,9 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import Throttle
-from pydanfossally import DanfossAlly
+
+from pydanfossally import DanfossAlly, exceptions
+
 
 from .const import (
     CONF_KEY,
@@ -28,7 +30,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-ALLY_COMPONENTS = ["binary_sensor", "climate", "sensor", "switch"]
+ALLY_COMPONENTS = ["binary_sensor", "climate", "sensor", "switch", "select"]
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
 SCAN_INTERVAL = 15
@@ -93,7 +95,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     async def _update(now):
         """Periodic update."""
-        await allyconnector.async_update()
+        try:
+            await allyconnector.async_update()
+            if _update.error_reported:
+                _update.error_reported = False
+                _LOGGER.info("Connection reestablished")
+        except TimeoutError:
+            if not _update.error_reported or _LOGGER.isEnabledFor(logging.DEBUG):
+                _update.error_reported = True
+                _LOGGER.error("Timeout connecting to Danfoss Ally")
+        except (exceptions.HTTPException) as err:
+            if not _update.error_reported or _LOGGER.isEnabledFor(logging.DEBUG):
+                _update.error_reported = True
+                _LOGGER.error("HTTP error: %s", str(err.__cause__))
+        except ConnectionError as err:
+            if not _update.error_reported or _LOGGER.isEnabledFor(logging.DEBUG):
+                _update.error_reported = True
+                _LOGGER.error(
+                    "Connection to Danfoss Ally failed: %s", str(err.__cause__)
+                )
+        except Exception as err:  # pylint: disable=broad-except
+            if not _update.error_reported or _LOGGER.isEnabledFor(logging.DEBUG):
+                _update.error_reported = True
+                _LOGGER.error(
+                    "Other error communicating with Danfoss Ally: %s",
+                    str(err.__context__),
+                )
+
+    _update.error_reported = False
 
     await _update(None)
 
@@ -206,7 +235,7 @@ class AllyConnector:
             datetime.utcnow() - self._latest_poll_time
         ).total_seconds()
         if seconds_since_poll < 0.5:
-            _LOGGER.warn(
+            _LOGGER.debug(
                 "set_temperature: Time since last poll %f sec.", seconds_since_poll
             )
 
@@ -220,18 +249,25 @@ class AllyConnector:
             datetime.utcnow() - self._latest_poll_time
         ).total_seconds()
         if seconds_since_poll < 0.5:
-            _LOGGER.warn("set_mode: Time since last poll %f sec.", seconds_since_poll)
+            _LOGGER.debug("set_mode: Time since last poll %f sec.", seconds_since_poll)
 
     def send_commands(
         self,
         device_id: str,
-        listofcommands: list[Tuple[str, str]],
+        listofcommands: list[tuple[str, str]],
         postponeupdate: bool,
     ) -> None:
         """Send list of commands for given device."""
         if postponeupdate:
             self._latest_write_time = datetime.utcnow()
-        self.ally.sendCommand(device_id, listofcommands)
+        try:
+            self.ally.sendCommand(device_id, listofcommands)
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.error(
+                "Failed to send command to device: %s. Error: %s",
+                device_id,
+                str(err.__cause__),
+            )
 
     @property
     def authorized(self) -> bool:

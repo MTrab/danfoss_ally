@@ -101,6 +101,97 @@ async def async_setup_entry(
                     )
                 ]
             )
+        if "factory_reset" in ally.devices[device] and ally.devices[device][
+            "model"
+        ] in ["Danfoss Ally™ Radiator Thermostat"]:
+            _LOGGER.debug(
+                "Found mounting mode control detector for %s",
+                ally.devices[device]["name"],
+            )
+            entities.extend(
+                [
+                    AllyBinarySensor(
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "mounting mode control",
+                        ally.devices[device]["model"],
+                    )
+                ]
+            )
+        if "mounting_mode_active" in ally.devices[device]:
+            _LOGGER.debug(
+                "Found mounting mode active detector for %s",
+                ally.devices[device]["name"],
+            )
+            entities.extend(
+                [
+                    AllyBinarySensor(
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "mounting mode active",
+                        ally.devices[device]["model"],
+                    )
+                ]
+            )
+        if "heat_supply_request" in ally.devices[device]:
+            _LOGGER.debug(
+                "Found heat_supply_request detector for %s",
+                ally.devices[device]["name"],
+            )
+            entities.extend(
+                [
+                    AllyBinarySensor(
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "heat supply request",
+                        ally.devices[device]["model"],
+                    )
+                ]
+            )
+        if "boiler_relay" in ally.devices[device]:
+            _LOGGER.debug(
+                "Found boiler relay_detector for %s", ally.devices[device]["name"]
+            )
+            entities.extend(
+                [
+                    AllyBinarySensor(
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "boiler relay",
+                        ally.devices[device]["model"],
+                    )
+                ]
+            )
+        if "adaptation_runstatus" in ally.devices[device]:
+            _LOGGER.debug(
+                "Found adaptation_runstatus for %s", ally.devices[device]["name"]
+            )
+            entities.extend(
+                [
+                    AllyBinarySensor(
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "adaptation run status",
+                        ally.devices[device]["model"],
+                    )
+                ]
+            )
+            entities.extend(
+                [
+                    AllyBinarySensor(
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "adaptation run valve characteristic found",
+                        ally.devices[device]["model"],
+                    )
+                ]
+            )
 
     if entities:
         async_add_entities(entities, True)
@@ -144,6 +235,50 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
                 and "switch" in self._device
                 and bool(self._device["switch"])
             )
+        elif self._type == "mounting mode control":
+            self._state = self._device["factory_reset"]
+            self.entity_description = BinarySensorEntityDescription(
+                key=1,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                icon="mdi:alpha-m",
+                entity_registry_enabled_default=False,
+            )
+        elif self._type == "mounting mode active":
+            self._state = self._device["mounting_mode_active"]
+            self.entity_description = BinarySensorEntityDescription(
+                key=2,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                icon="mdi:thermostat",
+                entity_registry_enabled_default=False,
+            )
+        elif self._type == "heat supply request":
+            self._state = self._device["heat_supply_request"]
+            self.entity_description = BinarySensorEntityDescription(
+                key=3, icon="mdi:water-boiler", entity_registry_enabled_default=False
+            )
+        elif self._type == "boiler relay":
+            self._state = self._device["boiler_relay"]
+            self.entity_description = BinarySensorEntityDescription(
+                key=4, icon="mdi:gas-burner", entity_registry_enabled_default=False
+            )
+        elif self._type == "adaptation run status":
+            self._state = bool(int(self._device["adaptation_runstatus"]) & 0x01)
+            self.entity_description = BinarySensorEntityDescription(
+                key=5,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                icon="mdi:progress-clock",
+                entity_registry_enabled_default=False,
+            )
+        elif self._type == "adaptation run valve characteristic found":
+            self._state = bool(
+                int(self._device["adaptation_runstatus"]) & 0x02
+            ) and not bool(int(self._device["adaptation_runstatus"]) & 0x04)
+            self.entity_description = BinarySensorEntityDescription(
+                key=6,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                icon="mdi:progress-check",
+                entity_registry_enabled_default=False,
+            )
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
@@ -186,6 +321,8 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             return BinarySensorDeviceClass.TAMPER
         elif self._type == "Pre-Heating":
             return BinarySensorDeviceClass.HEAT
+        elif self._type == "adaptation run status":
+            return BinarySensorDeviceClass.RUNNING
         return None
 
     @callback
@@ -216,3 +353,17 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
                 and "switch" in self._device
                 and bool(self._device["switch"])
             )
+        elif self._type == "mounting mode control":
+            self._state = self._device["factory_reset"]
+        elif self._type == "mounting mode active":
+            self._state = self._device["mounting_mode_active"]
+        elif self._type == "heat supply request":
+            self._state = self._device["heat_supply_request"]
+        elif self._type == "boiler relay":
+            self._state = self._device["boiler_relay"]
+        elif self._type == "adaptation run status":
+            self._state = bool(int(self._device["adaptation_runstatus"]) & 0x01)
+        elif self._type == "adaptation run valve characteristic found":
+            self._state = bool(
+                int(self._device["adaptation_runstatus"]) & 0x02
+            ) and not bool(int(self._device["adaptation_runstatus"]) & 0x04)
