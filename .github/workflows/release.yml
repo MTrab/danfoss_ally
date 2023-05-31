@@ -30,7 +30,7 @@ jobs:
           cd custom_components/danfoss_ally
           zip danfoss_ally.zip -r ./
       - name: Upload zip to release
-        uses: svenstaro/upload-release-action@2.5.0
+        uses: svenstaro/upload-release-action@2.6.1
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./custom_components/danfoss_ally/danfoss_ally.zip
