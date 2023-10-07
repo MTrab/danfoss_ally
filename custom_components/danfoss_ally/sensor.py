@@ -201,3 +201,7 @@ class AllySensor(AllyDeviceEntity, SensorEntity):
             self._attr_native_value = self._device["ext_measured_rs"]
         elif self._type in self._device:
             self._attr_native_value = self._device[self._type]
+
+        # Make external sensor temperature unavailable if value is -80 (feature disabled value)
+        if self.entity_description.key == AllySensorType.EXTERNAL_SENSOR_TEMPERATURE:
+            self._attr_available = self._attr_native_value != float(-80)

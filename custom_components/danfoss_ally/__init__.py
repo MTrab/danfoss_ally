@@ -10,7 +10,7 @@ from homeassistant.components.climate.const import PRESET_AWAY, PRESET_HOME
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.dispatcher import dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import Throttle
@@ -123,6 +123,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     _update.error_reported = False
 
     await _update(None)
+
+    # Remove old devices
+    if allyconnector.ally.devices is not None and len(allyconnector.ally.devices) > 0:
+        # Build list of devices to keep
+        devices = []
+        for device in allyconnector.ally.devices:
+            devices.append((DOMAIN, device))
+
+        # Remove devices no longr reported by the API
+        device_registry = dr.async_get(hass)
+        for device_entry in dr.async_entries_for_config_entry(
+            device_registry, entry.entry_id
+        ):
+            for identifier in device_entry.identifiers:
+                if identifier not in devices:
+                    _LOGGER.warning("Removing device: %s", identifier)
+                    device_registry.async_remove_device(device_entry.id)
 
     update_track = async_track_time_interval(
         hass,
