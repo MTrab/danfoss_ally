@@ -78,6 +78,13 @@ As the integration has evolved more and more temperature readings are becoming a
   However it does work and you can usually set an an external temperature this way. Just also consider what happens if/when disrupted.
   Note: Currently we are not able to see if/when it switches back to using its own temperature reading.
 
+  You can import the blueprint below for updating your radiator thermostats with an external temperature reading. Selecting several temperature sensors will update the thermostat with an average of the measured temperatures. If you select multiple radiator thermostats they'll all be updated with the measured temperature.
+  
+  Create one automation per room where you have external temperature sensors and Ally thermostats.
+
+  [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgist.github.com%2Ftbarnekov%2F02962fb065d8a6831d11ebeead4d6141)
+  
+  
 &nbsp;
 
 #### Set target temperature
