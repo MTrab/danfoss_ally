@@ -31,6 +31,8 @@ variables:
 trigger:
   - platform: state
     entity_id: !input temperature_sensors
+  - platform: time_pattern
+    minutes: /30
 
 action:
   - alias: Set external temperature
