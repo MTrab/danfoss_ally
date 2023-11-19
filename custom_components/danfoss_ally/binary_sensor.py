@@ -166,6 +166,21 @@ async def async_setup_entry(
                     )
                 ]
             )
+        if "output_status" in ally.devices[device]:
+            _LOGGER.debug(
+                "Found output_status_detector for %s", ally.devices[device]["name"]
+            )
+            entities.extend(
+                [
+                    AllyBinarySensor(
+                        ally,
+                        ally.devices[device]["name"],
+                        device,
+                        "output_status",
+                        ally.devices[device]["model"],
+                    )
+                ]
+            )
         if "adaptation_runstatus" in ally.devices[device]:
             _LOGGER.debug(
                 "Found adaptation_runstatus for %s", ally.devices[device]["name"]
@@ -261,6 +276,11 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             self.entity_description = BinarySensorEntityDescription(
                 key=4, icon="mdi:gas-burner", entity_registry_enabled_default=False
             )
+        elif self._type == "output_status":
+            self._state = self._device["output_status"]
+            self.entity_description = BinarySensorEntityDescription(
+                key=4, icon="mdi:pipe-valve", entity_registry_enabled_default=False
+            )
         elif self._type == "adaptation run status":
             self._state = bool(int(self._device["adaptation_runstatus"]) & 0x01)
             self.entity_description = BinarySensorEntityDescription(
@@ -323,6 +343,8 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             return BinarySensorDeviceClass.HEAT
         elif self._type == "adaptation run status":
             return BinarySensorDeviceClass.RUNNING
+        elif self._type == "output_status":
+            return BinarySensorDeviceClass.OPENING
         return None
 
     @callback
@@ -361,6 +383,8 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             self._state = self._device["heat_supply_request"]
         elif self._type == "boiler relay":
             self._state = self._device["boiler_relay"]
+        elif self._type == "output_status":
+            self._state = self._device["output_status"]
         elif self._type == "adaptation run status":
             self._state = bool(int(self._device["adaptation_runstatus"]) & 0x01)
         elif self._type == "adaptation run valve characteristic found":
