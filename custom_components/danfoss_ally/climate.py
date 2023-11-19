@@ -9,6 +9,7 @@ from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SU
     ATTR_HVAC_MODE,
     ATTR_PRESET_MODE,
     CURRENT_HVAC_HEAT,
+    CURRENT_HVAC_COOL,
     CURRENT_HVAC_IDLE,
     HVAC_MODE_AUTO,
     HVAC_MODE_HEAT,
@@ -494,10 +495,13 @@ class IconClimate(AllyClimate):
         """Return the current running hvac operation if supported.
         Need to be one of CURRENT_HVAC_*.
         """
-        if "work_state" in self._device:
-            if self._device["work_state"] == "heat_active":
-                return CURRENT_HVAC_HEAT
-            elif self._device["work_state"] == "Heat":
+        if "output_status" in self._device:
+            if self._device["output_status"] == True:
+                if self._device["work_state"] == "Heat" or "heat_active":
+                    return CURRENT_HVAC_HEAT
+                elif self._device["work_state"] == "Cool" or "cool_active":
+                    return CURRENT_HVAC_COOL
+            elif self._device["output_status"] == False:
                 return CURRENT_HVAC_IDLE
 
 
