@@ -13,6 +13,8 @@ from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SU
     CURRENT_HVAC_IDLE,
     HVAC_MODE_AUTO,
     HVAC_MODE_HEAT,
+    HVAC_MODE_COOL,
+    HVAC_MODE_OFF,
     PRESET_AWAY,
     PRESET_HOME,
     ClimateEntityFeature,
@@ -491,15 +493,52 @@ class IconClimate(AllyClimate):
         )
 
     @property
+    def hvac_mode(self):
+        """Return hvac operation ie. heat, cool mode.
+        Need to be one of HVAC_MODE_*.
+        """
+        if "mode" in self._device:
+            if (
+                self._device["mode"] == "at_home"
+                or self._device["mode"] == "leaving_home"
+                or self._device["mode"] == "holiday_sat"
+                or self._device["mode"] == "holiday"
+                or self._device["mode"] == "pause"
+            ):
+                return HVAC_MODE_AUTO
+            elif (
+                self._device["work_state"] == "Heat"
+                or self._device["work_state"] == "heat_active"
+            ):
+                if self._device["manual_mode_fast"] == self._device["lower_temp"]:
+                    return HVAC_MODE_OFF
+                else:
+                    return HVAC_MODE_HEAT
+            elif (
+                self._device["work_state"] == "Cool"
+                or self._device["work_state"] == "cool_active"
+            ):
+                if self._device["manual_mode_fast"] == self._device["upper_temp"]:
+                    return HVAC_MODE_OFF
+                else:
+                    return HVAC_MODE_COOL
+
+    @property
     def hvac_action(self):
         """Return the current running hvac operation if supported.
         Need to be one of CURRENT_HVAC_*.
         """
         if "output_status" in self._device:
             if self._device["output_status"] == True:
-                if self._device["work_state"] == "Heat" or "heat_active":
+                if (
+                    self._device["work_state"] == "Heat"
+                    or self._device["work_state"] == "heat_active"
+                ):
                     return CURRENT_HVAC_HEAT
-                elif self._device["work_state"] == "Cool" or "cool_active":
+                elif (
+                    self._device["work_state"] == "Cool"
+                    or self._device["work_state"] == "cool_active"
+                ):
                     return CURRENT_HVAC_COOL
             elif self._device["output_status"] == False:
                 return CURRENT_HVAC_IDLE
@@ -540,6 +579,50 @@ async def async_setup_entry(
     if entities:
         async_add_entities(entities, True)
 
+    @callback
+    def _async_update_callback(self):
+        """Load data and update state."""
+        self._async_update_data()
+        self.async_write_ha_state()
+
+    def set_hvac_mode(self, hvac_mode):
+        """Set new target hvac mode."""
+
+        _LOGGER.debug("Setting hvac mode to %s", hvac_mode)
+
+        if hvac_mode == HVAC_MODE_AUTO:
+            mode = "at_home"  # We have to choose either at_home or leaving_home
+            manual_set = self._device["at_home_setting"]
+        elif hvac_mode == HVAC_MODE_HEAT:
+            mode = "manual"
+            manual_set = self._device["leaving_home_setting"]
+        elif hvac_mode == HVAC_MODE_COOL:
+            mode = "manual"
+            manual_set = self._device["at_home_setting"]
+        elif hvac_mode == HVAC_MODE_OFF:
+            mode = "manual"
+            if (
+                self._device["work_state"] == "heat_active"
+                or self._device["work_state"] == "Heat"
+            ):
+                manual_set = self._device["lower_temp"]
+            elif (
+                self._device["work_state"] == "cool_active"
+                or self._device["work_state"] == "Cool"
+            ):
+                manual_set = self._device["upper_temp"]
+
+        if mode is None:
+            return
+
+        self._device["mode"] = mode  # Update current copy of device data
+        self._device["manual_mode_fast"] = manual_set
+        self._ally.set_mode(self._device_id, mode)
+        self._ally.set_temperature(self._device_id, manual_set)
+
+        # Update UI
+        self.async_write_ha_state()
+
 
 def _generate_entities(ally: AllyConnector):
     """Create all climate entities."""
@@ -566,7 +649,17 @@ def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyCl
     support_flags = (
         ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
     )
-    supported_hvac_modes = [HVAC_MODE_AUTO, HVAC_MODE_HEAT]
+
+    if model == "Icon RT":
+        supported_hvac_modes = [
+            HVAC_MODE_AUTO,
+            HVAC_MODE_HEAT,
+            HVAC_MODE_COOL,
+            HVAC_MODE_OFF,
+        ]
+    else:
+        supported_hvac_modes = [HVAC_MODE_AUTO, HVAC_MODE_HEAT]
+
     heat_min_temp = 4.5
     heat_max_temp = 35.0
     heat_step = 0.5
