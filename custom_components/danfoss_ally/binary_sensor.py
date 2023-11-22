@@ -176,7 +176,7 @@ async def async_setup_entry(
                         ally,
                         ally.devices[device]["name"],
                         device,
-                        "output_status",
+                        "Thermal actuator",
                         ally.devices[device]["model"],
                     )
                 ]
@@ -276,10 +276,10 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             self.entity_description = BinarySensorEntityDescription(
                 key=4, icon="mdi:gas-burner", entity_registry_enabled_default=False
             )
-        elif self._type == "output_status":
+        elif self._type == "Thermal actuator":
             self._state = self._device["output_status"]
             self.entity_description = BinarySensorEntityDescription(
-                key=4, icon="mdi:pipe-valve", entity_registry_enabled_default=False
+                key=4, icon="mdi:pipe-valve"
             )
         elif self._type == "adaptation run status":
             self._state = bool(int(self._device["adaptation_runstatus"]) & 0x01)
@@ -343,7 +343,7 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             return BinarySensorDeviceClass.HEAT
         elif self._type == "adaptation run status":
             return BinarySensorDeviceClass.RUNNING
-        elif self._type == "output_status":
+        elif self._type == "Thermal actuator":
             return BinarySensorDeviceClass.OPENING
         return None
 
@@ -383,7 +383,7 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             self._state = self._device["heat_supply_request"]
         elif self._type == "boiler relay":
             self._state = self._device["boiler_relay"]
-        elif self._type == "output_status":
+        elif self._type == "Thermal actuator":
             self._state = self._device["output_status"]
         elif self._type == "adaptation run status":
             self._state = bool(int(self._device["adaptation_runstatus"]) & 0x01)
