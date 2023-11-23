@@ -43,4 +43,3 @@ See: [Usage.md](Usage.md)
 ## Known issues
 
 - Inconsistency between API and app, devices are not updating correctly between API and app and sometimes the devices renders offline in the app - this is a Danfoss issue and not this integration
-- Floorheating modules (Icon) are not reporting the actual room temperature in the API - this is a Danfoss issue and not this integration
