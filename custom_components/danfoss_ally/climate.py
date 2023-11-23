@@ -522,6 +522,49 @@ class IconClimate(AllyClimate):
                     return HVAC_MODE_OFF
                 else:
                     return HVAC_MODE_COOL
+    @callback
+    def _async_update_callback(self):
+        """Load data and update state."""
+        self._async_update_data()
+        self.async_write_ha_state()
+
+    def set_hvac_mode(self, hvac_mode):
+        """Set new target hvac mode."""
+
+        _LOGGER.debug("Setting hvac mode to %s", hvac_mode)
+
+        if hvac_mode == HVAC_MODE_AUTO:
+            mode = "at_home"  # We have to choose either at_home or leaving_home
+            manual_set = self._device["at_home_setting"]
+        elif hvac_mode == HVAC_MODE_HEAT:
+            mode = "manual"
+            manual_set = self._device["leaving_home_setting"]
+        elif hvac_mode == HVAC_MODE_COOL:
+            mode = "manual"
+            manual_set = self._device["at_home_setting"]
+        elif hvac_mode == HVAC_MODE_OFF:
+            mode = "manual"
+            if (
+                self._device["work_state"] == "heat_active"
+                or self._device["work_state"] == "Heat"
+            ):
+                manual_set = self._device["lower_temp"]
+            elif (
+                self._device["work_state"] == "cool_active"
+                or self._device["work_state"] == "Cool"
+            ):
+                manual_set = self._device["upper_temp"]
+
+        if mode is None:
+            return
+
+        self._device["mode"] = mode  # Update current copy of device data
+        self._device["manual_mode_fast"] = manual_set
+        self._ally.set_mode(self._device_id, mode)
+        self._ally.set_temperature(self._device_id, manual_set)
+
+        # Update UI
+        self.async_write_ha_state()
 
     @property
     def hvac_action(self):
@@ -578,51 +621,6 @@ async def async_setup_entry(
     entities = await hass.async_add_executor_job(_generate_entities, ally)
     if entities:
         async_add_entities(entities, True)
-
-    @callback
-    def _async_update_callback(self):
-        """Load data and update state."""
-        self._async_update_data()
-        self.async_write_ha_state()
-
-    def set_hvac_mode(self, hvac_mode):
-        """Set new target hvac mode."""
-
-        _LOGGER.debug("Setting hvac mode to %s", hvac_mode)
-
-        if hvac_mode == HVAC_MODE_AUTO:
-            mode = "at_home"  # We have to choose either at_home or leaving_home
-            manual_set = self._device["at_home_setting"]
-        elif hvac_mode == HVAC_MODE_HEAT:
-            mode = "manual"
-            manual_set = self._device["leaving_home_setting"]
-        elif hvac_mode == HVAC_MODE_COOL:
-            mode = "manual"
-            manual_set = self._device["at_home_setting"]
-        elif hvac_mode == HVAC_MODE_OFF:
-            mode = "manual"
-            if (
-                self._device["work_state"] == "heat_active"
-                or self._device["work_state"] == "Heat"
-            ):
-                manual_set = self._device["lower_temp"]
-            elif (
-                self._device["work_state"] == "cool_active"
-                or self._device["work_state"] == "Cool"
-            ):
-                manual_set = self._device["upper_temp"]
-
-        if mode is None:
-            return
-
-        self._device["mode"] = mode  # Update current copy of device data
-        self._device["manual_mode_fast"] = manual_set
-        self._ally.set_mode(self._device_id, mode)
-        self._ally.set_temperature(self._device_id, manual_set)
-
-        # Update UI
-        self.async_write_ha_state()
-
 
 def _generate_entities(ally: AllyConnector):
     """Create all climate entities."""
