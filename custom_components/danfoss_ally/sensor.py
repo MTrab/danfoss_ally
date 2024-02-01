@@ -77,14 +77,6 @@ SENSORS = [
         icon="mdi:pipe-valve",
     ),
     SensorEntityDescription(
-        key=AllySensorType.LOAD_ESTIMATE,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        native_unit_of_measurement="",
-        name="{} load estimate",
-        icon="mdi:progress-helper",
-        entity_registry_enabled_default=False,
-    ),
-    SensorEntityDescription(
         key=AllySensorType.LOAD_ROOM_MEAN,
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement="",

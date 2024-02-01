@@ -149,8 +149,8 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         """Return current temperature."""
         if "temperature" in self._device:
             if (
-                "room_sensor" in self._device
-                and self._device["room_sensor"]
+                "radiator_covered" in self._device
+                and self._device["radiator_covered"]
                 and "external_sensor_temperature" in self._device
             ):
                 return self._device["external_sensor_temperature"]
@@ -366,7 +366,6 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             self._ally.send_commands(
                 self._device_id,
                 [
-                    ("sensor_avg_temp", temp_10),
                     ("ext_measured_rs", temp_100),
                 ],
                 False,
@@ -428,8 +427,8 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         setpoint_code = None
         if (
             for_writing == False
-            and "banner_ctrl" in self._device
-            and bool(self._device["banner_ctrl"])
+            and "SetpointChangeSource" in self._device
+            and bool(self._device["SetpointChangeSource"] == "Manual")
         ):
             # Temperature setpoint is overridden locally at the thermostate
             setpoint_code = "manual_mode_fast"
