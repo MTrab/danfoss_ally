@@ -1,5 +1,5 @@
-pydanfossally==0.0.30
+pydanfossally==0.0.32
 colorlog==6.7.0
-homeassistant==2023.9.1
+homeassistant==2024.2.0
 pip>=21.0,<23.3
 ruff==0.0.291
