@@ -8,16 +8,14 @@ from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SUPPORT_TARGET_TEMPERATURE,
     ATTR_HVAC_MODE,
     ATTR_PRESET_MODE,
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_IDLE,
-    HVAC_MODE_AUTO,
-    HVAC_MODE_HEAT,
+    HVACAction,
     PRESET_AWAY,
     PRESET_HOME,
+    HVACMode,
     ClimateEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
+from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_platform
@@ -170,13 +168,13 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
                 or self._device["mode"] == "leaving_home"
                 or self._device["mode"] == "holiday_sat"
             ):
-                return HVAC_MODE_AUTO
+                return HVACMode.AUTO
             elif (
                 self._device["mode"] == "manual"
                 or self._device["mode"] == "pause"
                 or self._device["mode"] == "holiday"
             ):
-                return HVAC_MODE_HEAT
+                return HVACMode.HEAT
 
     @property
     def preset_mode(self):
@@ -237,18 +235,18 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
     @property
     def hvac_action(self):
         """Return the current running hvac operation if supported.
-        Need to be one of CURRENT_HVAC_*.
+        Need to be one of HVACAction.*
         """
         if "work_state" in self._device:
             if self._device["work_state"] == "Heat":
-                return CURRENT_HVAC_HEAT
+                return HVACAction.HEATING
             elif self._device["work_state"] == "NoHeat":
-                return CURRENT_HVAC_IDLE
+                return HVACAction.IDLE
 
     @property
     def temperature_unit(self):
         """Return the unit of measurement used by the platform."""
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
     @property
     def target_temperature_step(self):
@@ -274,9 +272,9 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
                 )  # Preset_mode sent from action
             elif ATTR_HVAC_MODE in kwargs:
                 value = kwargs.get(ATTR_HVAC_MODE)  # HVAC_mode sent from action
-                if value == HVAC_MODE_AUTO:
+                if value == HVACMode.AUTO:
                     setpoint_code = self.get_setpoint_code_for_mode("at_home")
-                if value == HVAC_MODE_HEAT:
+                if value == HVACMode.HEAT:
                     setpoint_code = self.get_setpoint_code_for_mode("manual")
             else:
                 setpoint_code = self.get_setpoint_code_for_mode(
@@ -409,9 +407,9 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
         _LOGGER.debug("Setting hvac mode to %s", hvac_mode)
 
-        if hvac_mode == HVAC_MODE_AUTO:
+        if hvac_mode == HVACMode.AUTO:
             mode = "at_home"  # We have to choose either at_home or leaving_home
-        elif hvac_mode == HVAC_MODE_HEAT:
+        elif hvac_mode == HVACMode.HEAT:
             mode = "manual"
 
         if mode is None:
@@ -491,13 +489,13 @@ class IconClimate(AllyClimate):
     @property
     def hvac_action(self):
         """Return the current running hvac operation if supported.
-        Need to be one of CURRENT_HVAC_*.
+        Need to be one of HVACAction.*
         """
         if "work_state" in self._device:
             if self._device["work_state"] == "heat_active":
-                return CURRENT_HVAC_HEAT
+                return HVACAction.HEATING
             elif self._device["work_state"] == "Heat":
-                return CURRENT_HVAC_IDLE
+                return HVACAction.IDLE
 
 
 async def async_setup_entry(
@@ -561,7 +559,7 @@ def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyCl
     support_flags = (
         ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
     )
-    supported_hvac_modes = [HVAC_MODE_AUTO, HVAC_MODE_HEAT]
+    supported_hvac_modes = [HVACMode.AUTO, HVACMode.HEAT]
     heat_min_temp = 4.5
     heat_max_temp = 35.0
     heat_step = 0.5
