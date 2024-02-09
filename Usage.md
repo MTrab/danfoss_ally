@@ -12,13 +12,6 @@ We urge you to experiment with the features you would like to make use of.
 
 &nbsp;
 
-#### Banner control
-
-Banner control is a binary sensor that indicates if the setpoint is overridden locally from the thermostat.
-This is also reported in the Ally app as a "Temporary setpoint".
-
-&nbsp;
-
 #### Pre-heat
 
 - **Pre-Heat** switch located in the Configuration section can be used to turn on and off the pre-heat feature.
@@ -155,7 +148,6 @@ We have two sensors and a switch made available:
 
 In this section we have two binary sensors and a switch:
 
-- **Boiler relay**: Likely a signal to a gas boiler or similar to indicate heat is needed.
 - **Heat supply request**: Likely similar to Boiler relay. The difference may be explained in the Programming reference, section 2.6.
 - **Heat available** switch: A signal to the thermostat. Probably indicating if water is heated sufficuently. Default on.
 
