@@ -16,14 +16,5 @@
                 }
             }
         }
-    },
-    "device_automation": {
-        "condition_type": {
-        },
-        "trigger_type": {
-        },
-        "action_type": {
-            "set_preset_temperature": "Set preset temperature"
-        }
     }
 }
