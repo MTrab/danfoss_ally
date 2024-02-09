@@ -59,7 +59,7 @@ body:
         # Details
   - type: textarea
     validations:
-      required: true
+      required: false
     attributes:
       label: Diagnostics information
       placeholder: "drag-and-drop the diagnostics data file here (do not copy-and-paste the content)"
