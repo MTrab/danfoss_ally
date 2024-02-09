@@ -1,4 +1,5 @@
 """Adds support for Danfoss Ally Gateway."""
+
 from __future__ import annotations
 
 import asyncio
@@ -30,8 +31,8 @@ _LOGGER = logging.getLogger(__name__)
 
 ALLY_COMPONENTS = ["binary_sensor", "climate", "sensor", "switch", "select"]
 
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
-SCAN_INTERVAL = 15
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=30)
+SCAN_INTERVAL = 45
 
 CONFIG_SCHEMA = vol.Schema(
     {
