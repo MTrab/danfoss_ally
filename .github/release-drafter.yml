@@ -19,7 +19,11 @@ categories:
       - 'fix'
       - 'bugfix'
       - 'bug'
-
+  
+  - title: ":flags: Translation"
+    labels:
+      - 'translation'
+      
   - title: '🧰 Maintenance'
     label: 'chore'
 
