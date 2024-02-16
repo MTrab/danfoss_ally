@@ -1,0 +1,8 @@
+{
+    "config": {
+        "error": {
+            "cannot_connect": "Verbindung ist nicht möglich",
+            "unknown": "Unerwarteter Fehler"
+        }
+    }
+}
