@@ -565,7 +565,9 @@ def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyCl
     heat_max_temp = 35.0
     heat_step = 0.5
 
-    if model == "Icon RT" or model == "":
+    if "Icon" in model:
+        _LOGGER.debug("Adding Icon device")
+
         entity = IconClimate(
             ally,
             name,
@@ -578,6 +580,8 @@ def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyCl
             support_flags,
         )
     else:
+        _LOGGER.debug("Adding Ally device")
+
         entity = AllyClimate(
             ally,
             name,
