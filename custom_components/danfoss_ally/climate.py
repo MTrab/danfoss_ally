@@ -1,4 +1,5 @@
 """Support for Danfoss Ally thermostats."""
+
 import functools as ft
 import logging
 from datetime import datetime
@@ -283,9 +284,9 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
         changed = False
         if temperature is not None and setpoint_code is not None:
-            self._device[
-                setpoint_code
-            ] = temperature  # Update temperature in current copy
+            self._device[setpoint_code] = (
+                temperature  # Update temperature in current copy
+            )
             self._ally.set_temperature(self._device_id, temperature, setpoint_code)
             changed = True
 
@@ -564,7 +565,9 @@ def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyCl
     heat_max_temp = 35.0
     heat_step = 0.5
 
-    if model == "Icon RT":
+    if "Icon" in model:
+        _LOGGER.debug("Adding Icon device")
+
         entity = IconClimate(
             ally,
             name,
@@ -577,6 +580,8 @@ def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyCl
             support_flags,
         )
     else:
+        _LOGGER.debug("Adding Ally device")
+
         entity = AllyClimate(
             ally,
             name,
