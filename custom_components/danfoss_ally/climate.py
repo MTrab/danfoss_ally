@@ -366,6 +366,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
                 self._device_id,
                 [
                     ("ext_measured_rs", temp_100),
+                    ("sensor_avg_temp", temp_10),
                 ],
                 False,
             )
