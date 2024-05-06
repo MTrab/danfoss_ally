@@ -180,13 +180,13 @@ class AllyBaseSwitch(AllyDeviceEntity, SwitchEntity):
             self._async_update_data()
         else:
             _LOGGER.debug("Skip update: %s, %s", self._device_id, self._type)
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     def update_ui(self, new_state: bool):
         """Update UI."""
         self._latest_write_time = datetime.utcnow()
         self._attr_is_on = new_state
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     @callback
     def _async_update_data(self):

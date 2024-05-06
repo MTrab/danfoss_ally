@@ -231,7 +231,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._ally.set_mode(self._device_id, mode)
 
         # Update UI
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     @property
     def hvac_action(self):
@@ -292,7 +292,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
         # Update UI
         if changed:
-            self.async_write_ha_state()
+            self.schedule_update_ha_state()
 
     async def set_preset_temperature(self, **kwargs):
         """Service call to set new target temperature."""
@@ -373,7 +373,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             # Update local copy and UI
             self._device["external_sensor_temperature"] = temp_10 / 10
             self._device["ext_measured_rs"] = temp_100 / 100
-            self.async_write_ha_state()
+            self.schedule_update_ha_state()
         else:
             _LOGGER.debug("Skip setting external temperature")
 
@@ -402,7 +402,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
     def _async_update_callback(self):
         """Load data and update state."""
         self._async_update_data()
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     def set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
@@ -421,7 +421,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._ally.set_mode(self._device_id, mode)
 
         # Update UI
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     def get_setpoint_code_for_mode(self, mode, for_writing=True):
         setpoint_code = None

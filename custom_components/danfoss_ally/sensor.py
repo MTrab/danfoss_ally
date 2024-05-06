@@ -170,7 +170,7 @@ class AllySensor(AllyDeviceEntity, SensorEntity):
     def _async_update_callback(self):
         """Update and write state."""
         self._async_update_data()
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     @callback
     def _async_update_data(self):
