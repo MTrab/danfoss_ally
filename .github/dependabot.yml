@@ -14,4 +14,4 @@ updates:
     interval: daily
     time: "04:00"
   labels:
-  - dependencies
+    - dependencies
