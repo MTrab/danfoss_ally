@@ -1,4 +1,5 @@
 """Support for Danfoss Ally thermostats."""
+
 import functools as ft
 import logging
 from datetime import datetime
@@ -15,12 +16,14 @@ from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SU
     HVAC_MODE_HEAT,
     HVAC_MODE_COOL,
     HVAC_MODE_OFF,
+    HVACAction,
     PRESET_AWAY,
     PRESET_HOME,
+    HVACMode,
     ClimateEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
+from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_platform
@@ -152,8 +155,8 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         """Return current temperature."""
         if "temperature" in self._device:
             if (
-                "room_sensor" in self._device
-                and self._device["room_sensor"]
+                "radiator_covered" in self._device
+                and self._device["radiator_covered"]
                 and "external_sensor_temperature" in self._device
             ):
                 return self._device["external_sensor_temperature"]
@@ -173,13 +176,13 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
                 or self._device["mode"] == "leaving_home"
                 or self._device["mode"] == "holiday_sat"
             ):
-                return HVAC_MODE_AUTO
+                return HVACMode.AUTO
             elif (
                 self._device["mode"] == "manual"
                 or self._device["mode"] == "pause"
                 or self._device["mode"] == "holiday"
             ):
-                return HVAC_MODE_HEAT
+                return HVACMode.HEAT
 
     @property
     def preset_mode(self):
@@ -235,23 +238,23 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._ally.set_mode(self._device_id, mode)
 
         # Update UI
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     @property
     def hvac_action(self):
         """Return the current running hvac operation if supported.
-        Need to be one of CURRENT_HVAC_*.
+        Need to be one of HVACAction.*
         """
         if "work_state" in self._device:
             if self._device["work_state"] == "Heat":
-                return CURRENT_HVAC_HEAT
+                return HVACAction.HEATING
             elif self._device["work_state"] == "NoHeat":
-                return CURRENT_HVAC_IDLE
+                return HVACAction.IDLE
 
     @property
     def temperature_unit(self):
         """Return the unit of measurement used by the platform."""
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
     @property
     def target_temperature_step(self):
@@ -277,9 +280,9 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
                 )  # Preset_mode sent from action
             elif ATTR_HVAC_MODE in kwargs:
                 value = kwargs.get(ATTR_HVAC_MODE)  # HVAC_mode sent from action
-                if value == HVAC_MODE_AUTO:
+                if value == HVACMode.AUTO:
                     setpoint_code = self.get_setpoint_code_for_mode("at_home")
-                if value == HVAC_MODE_HEAT:
+                if value == HVACMode.HEAT:
                     setpoint_code = self.get_setpoint_code_for_mode("manual")
             else:
                 setpoint_code = self.get_setpoint_code_for_mode(
@@ -288,15 +291,15 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
         changed = False
         if temperature is not None and setpoint_code is not None:
-            self._device[
-                setpoint_code
-            ] = temperature  # Update temperature in current copy
+            self._device[setpoint_code] = (
+                temperature  # Update temperature in current copy
+            )
             self._ally.set_temperature(self._device_id, temperature, setpoint_code)
             changed = True
 
         # Update UI
         if changed:
-            self.async_write_ha_state()
+            self.schedule_update_ha_state()
 
     async def set_preset_temperature(self, **kwargs):
         """Service call to set new target temperature."""
@@ -369,15 +372,15 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
             self._ally.send_commands(
                 self._device_id,
                 [
-                    ("sensor_avg_temp", temp_10),
                     ("ext_measured_rs", temp_100),
+                    ("sensor_avg_temp", temp_10),
                 ],
                 False,
             )
             # Update local copy and UI
             self._device["external_sensor_temperature"] = temp_10 / 10
             self._device["ext_measured_rs"] = temp_100 / 100
-            self.async_write_ha_state()
+            self.schedule_update_ha_state()
         else:
             _LOGGER.debug("Skip setting external temperature")
 
@@ -406,16 +409,16 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
     def _async_update_callback(self):
         """Load data and update state."""
         self._async_update_data()
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     def set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
 
         _LOGGER.debug("Setting hvac mode to %s", hvac_mode)
 
-        if hvac_mode == HVAC_MODE_AUTO:
+        if hvac_mode == HVACMode.AUTO:
             mode = "at_home"  # We have to choose either at_home or leaving_home
-        elif hvac_mode == HVAC_MODE_HEAT:
+        elif hvac_mode == HVACMode.HEAT:
             mode = "manual"
 
         if mode is None:
@@ -425,14 +428,14 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         self._ally.set_mode(self._device_id, mode)
 
         # Update UI
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     def get_setpoint_code_for_mode(self, mode, for_writing=True):
         setpoint_code = None
         if (
             for_writing == False
-            and "banner_ctrl" in self._device
-            and bool(self._device["banner_ctrl"])
+            and "SetpointChangeSource" in self._device
+            and bool(self._device["SetpointChangeSource"] == "Manual")
         ):
             # Temperature setpoint is overridden locally at the thermostate
             setpoint_code = "manual_mode_fast"
@@ -569,7 +572,7 @@ class IconClimate(AllyClimate):
     @property
     def hvac_action(self):
         """Return the current running hvac operation if supported.
-        Need to be one of CURRENT_HVAC_*.
+        Need to be one of HVACAction.*
         """
         if "output_status" in self._device:
             if self._device["output_status"] == True:
@@ -585,7 +588,6 @@ class IconClimate(AllyClimate):
                     return CURRENT_HVAC_COOL
             elif self._device["output_status"] == False:
                 return CURRENT_HVAC_IDLE
-
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
@@ -662,7 +664,9 @@ def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyCl
     heat_max_temp = 35.0
     heat_step = 0.5
 
-    if model == "Icon RT":
+    if "Icon" in model:
+        _LOGGER.debug("Adding Icon device")
+
         entity = IconClimate(
             ally,
             name,
@@ -675,6 +679,8 @@ def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyCl
             support_flags,
         )
     else:
+        _LOGGER.debug("Adding Ally device")
+
         entity = AllyClimate(
             ally,
             name,

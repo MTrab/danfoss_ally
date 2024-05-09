@@ -71,9 +71,10 @@ async def async_setup_entry(
                     )
                 ]
             )
-        if "banner_ctrl" in ally.devices[device]:
+        if "SetpointChangeSource" in ally.devices[device]:
             _LOGGER.debug(
-                "Found banner_ctrl detector for %s", ally.devices[device]["name"]
+                "Found SetpointChangeSource detector for %s",
+                ally.devices[device]["name"],
             )
             entities.extend(
                 [
@@ -81,7 +82,7 @@ async def async_setup_entry(
                         ally,
                         ally.devices[device]["name"],
                         device,
-                        "banner control",
+                        "Setpoint Change Source",
                         ally.devices[device]["model"],
                     )
                 ]
@@ -97,24 +98,6 @@ async def async_setup_entry(
                         ally.devices[device]["name"],
                         device,
                         "Pre-Heating",
-                        ally.devices[device]["model"],
-                    )
-                ]
-            )
-        if "factory_reset" in ally.devices[device] and ally.devices[device][
-            "model"
-        ] in ["Danfoss Ally™ Radiator Thermostat"]:
-            _LOGGER.debug(
-                "Found mounting mode control detector for %s",
-                ally.devices[device]["name"],
-            )
-            entities.extend(
-                [
-                    AllyBinarySensor(
-                        ally,
-                        ally.devices[device]["name"],
-                        device,
-                        "mounting mode control",
                         ally.devices[device]["model"],
                     )
                 ]
@@ -242,21 +225,13 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             self.entity_description = BinarySensorEntityDescription(
                 key=0, entity_category=EntityCategory.DIAGNOSTIC
             )
-        elif self._type == "banner control":
-            self._state = bool(self._device["banner_ctrl"])
+        elif self._type == "Setpoint Change Source":
+            self._state = bool(self._device["SetpointChangeSource"] == "Manual")
         elif self._type == "Pre-Heating":
             self._state = (
                 bool(self._device["switch_state"])
                 and "switch" in self._device
                 and bool(self._device["switch"])
-            )
-        elif self._type == "mounting mode control":
-            self._state = self._device["factory_reset"]
-            self.entity_description = BinarySensorEntityDescription(
-                key=1,
-                entity_category=EntityCategory.DIAGNOSTIC,
-                icon="mdi:alpha-m",
-                entity_registry_enabled_default=False,
             )
         elif self._type == "mounting mode active":
             self._state = self._device["mounting_mode_active"]
@@ -268,11 +243,6 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             )
         elif self._type == "heat supply request":
             self._state = self._device["heat_supply_request"]
-            self.entity_description = BinarySensorEntityDescription(
-                key=3, icon="mdi:water-boiler", entity_registry_enabled_default=False
-            )
-        elif self._type == "boiler relay":
-            self._state = self._device["boiler_relay"]
             self.entity_description = BinarySensorEntityDescription(
                 key=4, icon="mdi:gas-burner", entity_registry_enabled_default=False
             )
@@ -351,7 +321,7 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
     def _async_update_callback(self):
         """Update and write state."""
         self._async_update_data()
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     @callback
     def _async_update_data(self):
@@ -367,16 +337,14 @@ class AllyBinarySensor(AllyDeviceEntity, BinarySensorEntity):
             self._state = not bool(self._device["child_lock"])
         elif self._type == "connectivity":
             self._state = bool(self._device["online"])
-        elif self._type == "banner control":
-            self._state = bool(self._device["banner_ctrl"])
+        elif self._type == "Setpoint Change Source":
+            self._state = bool(self._device["SetpointChangeSource"] == "Manual")
         elif self._type == "Pre-Heating":
             self._state = (
                 bool(self._device["switch_state"])
                 and "switch" in self._device
                 and bool(self._device["switch"])
             )
-        elif self._type == "mounting mode control":
-            self._state = self._device["factory_reset"]
         elif self._type == "mounting mode active":
             self._state = self._device["mounting_mode_active"]
         elif self._type == "heat supply request":

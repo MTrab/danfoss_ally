@@ -1,0 +1,7 @@
+{
+    "services": {
+      "set_preset_temperature": "mdi:thermometer",
+      "set_window_state_open": "mdi:window-open",
+      "set_external_temperature": "mdi:home-thermometer"
+    }
+  }

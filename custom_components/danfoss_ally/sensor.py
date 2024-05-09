@@ -11,7 +11,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, TEMP_CELSIUS
+from homeassistant.const import PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
@@ -41,7 +41,7 @@ SENSORS = [
         key=AllySensorType.TEMPERATURE,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=None,
-        native_unit_of_measurement=TEMP_CELSIUS,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         name="{} temperature",
     ),
@@ -65,7 +65,7 @@ SENSORS = [
         key=AllySensorType.FLOOR_TEMPERATURE,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=None,
-        native_unit_of_measurement=TEMP_CELSIUS,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         name="{} floor temperature",
     ),
@@ -75,14 +75,6 @@ SENSORS = [
         native_unit_of_measurement=PERCENTAGE,
         name="{} valve opening",
         icon="mdi:pipe-valve",
-    ),
-    SensorEntityDescription(
-        key=AllySensorType.LOAD_ESTIMATE,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        native_unit_of_measurement="",
-        name="{} load estimate",
-        icon="mdi:progress-helper",
-        entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
         key=AllySensorType.LOAD_ROOM_MEAN,
@@ -96,7 +88,7 @@ SENSORS = [
         key=AllySensorType.EXTERNAL_SENSOR_TEMPERATURE,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=None,
-        native_unit_of_measurement=TEMP_CELSIUS,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         name="{} external sensor temperature",
         entity_registry_enabled_default=False,
@@ -178,7 +170,7 @@ class AllySensor(AllyDeviceEntity, SensorEntity):
     def _async_update_callback(self):
         """Update and write state."""
         self._async_update_data()
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     @callback
     def _async_update_data(self):

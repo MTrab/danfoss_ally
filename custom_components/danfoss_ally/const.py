@@ -1,9 +1,5 @@
 """Danfoss_ally consts."""
-from homeassistant.components.climate.const import (
-    HVAC_MODE_AUTO,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_OFF,
-)
+from homeassistant.components.climate.const import HVACMode
 
 THERMOSTAT_MODE_AUTO = "hot"
 THERMOSTAT_MODE_MANUAL = "manual"
@@ -17,9 +13,9 @@ PRESET_HOLIDAY_AWAY = "Holiday (Away)"
 PRESET_HOLIDAY_HOME = "Holiday (Home)"
 
 HA_TO_DANFOSS_HVAC_MODE_MAP = {
-    HVAC_MODE_OFF: THERMOSTAT_MODE_OFF,
-    HVAC_MODE_HEAT: THERMOSTAT_MODE_MANUAL,
-    HVAC_MODE_AUTO: THERMOSTAT_MODE_AUTO,
+    HVACMode.OFF: THERMOSTAT_MODE_OFF,
+    HVACMode.HEAT: THERMOSTAT_MODE_MANUAL,
+    HVACMode.AUTO: THERMOSTAT_MODE_AUTO,
 }
 
 DANFOSS_TO_HA_HVAC_MODE_MAP = {
