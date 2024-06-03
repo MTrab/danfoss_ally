@@ -173,4 +173,11 @@ Possible values:
 
 &nbsp;
 
+#### Thermal Actuator _(\*2)_
+
+With this binary sensor, you can know if the Thermal Actuator is open or closed. The HVAC Action is base one this state.
+
+&nbsp;
+
 _(\*1): Radiator only_
+_(\*2): Icon only_
