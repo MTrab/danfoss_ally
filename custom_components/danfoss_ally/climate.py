@@ -567,7 +567,7 @@ class IconClimate(AllyClimate):
         self._ally.set_temperature(self._device_id, manual_set)
 
         # Update UI
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
     @property
     def hvac_action(self):
