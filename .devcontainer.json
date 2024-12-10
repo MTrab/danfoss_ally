@@ -1,16 +1,16 @@
 {
-    "name": "ludeeus/integration_blueprint",
-	"image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-    "postCreateCommand": "scripts/setup",
-    "appPort": [
-        "9126:8123"
-    ],
-    "portsAttributes": {
-        "8123": {
-            "label": "Home Assistant - Danfoss Ally integration",
-            "onAutoForward": "notify"
-        }
-    },
+	"name": "ludeeus/integration_blueprint",
+	"image": "mcr.microsoft.com/devcontainers/python:3.12-bullseye",
+	"postCreateCommand": "scripts/setup",
+	"appPort": [
+		"9126:8123"
+	],
+	"portsAttributes": {
+		"8123": {
+			"label": "Home Assistant - Danfoss Ally integration",
+			"onAutoForward": "notify"
+		}
+	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -37,9 +37,6 @@
 	},
 	"remoteUser": "root",
 	"features": {
-		"ghcr.io/devcontainers/features/rust:1": {},
-		"ghcr.io/devcontainers/features/python:1": {
-			"version": "latest"
-		}
+		"ghcr.io/devcontainers/features/rust:1": {}
 	}
 }
