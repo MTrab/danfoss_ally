@@ -9,13 +9,6 @@ from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SUPPORT_TARGET_TEMPERATURE,
     ATTR_HVAC_MODE,
     ATTR_PRESET_MODE,
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_COOL,
-    CURRENT_HVAC_IDLE,
-    HVAC_MODE_AUTO,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_COOL,
-    HVAC_MODE_OFF,
     HVACAction,
     PRESET_AWAY,
     PRESET_HOME,
@@ -498,7 +491,7 @@ class IconClimate(AllyClimate):
     @property
     def hvac_mode(self):
         """Return hvac operation ie. heat, cool mode.
-        Need to be one of HVAC_MODE_*.
+        Need to be one of HVACMode.
         """
         if "mode" in self._device:
             if (
@@ -508,23 +501,23 @@ class IconClimate(AllyClimate):
                 or self._device["mode"] == "holiday"
                 or self._device["mode"] == "pause"
             ):
-                return HVAC_MODE_AUTO
+                return HVACMode.AUTO
             elif (
                 self._device["work_state"] == "Heat"
                 or self._device["work_state"] == "heat_active"
             ):
                 if self._device["manual_mode_fast"] == self._device["lower_temp"]:
-                    return HVAC_MODE_OFF
+                    return HVACMode.OFF
                 else:
-                    return HVAC_MODE_HEAT
+                    return HVACMode.HEAT
             elif (
                 self._device["work_state"] == "Cool"
                 or self._device["work_state"] == "cool_active"
             ):
                 if self._device["manual_mode_fast"] == self._device["upper_temp"]:
-                    return HVAC_MODE_OFF
+                    return HVACMode.OFF
                 else:
-                    return HVAC_MODE_COOL
+                    return HVACMode.COOL
     @callback
     def _async_update_callback(self):
         """Load data and update state."""
@@ -536,16 +529,16 @@ class IconClimate(AllyClimate):
 
         _LOGGER.debug("Setting hvac mode to %s", hvac_mode)
 
-        if hvac_mode == HVAC_MODE_AUTO:
+        if hvac_mode == HVACMode.AUTO:
             mode = "at_home"  # We have to choose either at_home or leaving_home
             manual_set = self._device["at_home_setting"]
-        elif hvac_mode == HVAC_MODE_HEAT:
+        elif hvac_mode == HVACMode.HEAT:
             mode = "manual"
             manual_set = self._device["leaving_home_setting"]
-        elif hvac_mode == HVAC_MODE_COOL:
+        elif hvac_mode == HVACMode.COOL:
             mode = "manual"
             manual_set = self._device["at_home_setting"]
-        elif hvac_mode == HVAC_MODE_OFF:
+        elif hvac_mode == HVACMode.OFF:
             mode = "manual"
             if (
                 self._device["work_state"] == "heat_active"
@@ -580,14 +573,14 @@ class IconClimate(AllyClimate):
                     self._device["work_state"] == "Heat"
                     or self._device["work_state"] == "heat_active"
                 ):
-                    return CURRENT_HVAC_HEAT
+                    return HVACAction.HEATING
                 elif (
                     self._device["work_state"] == "Cool"
                     or self._device["work_state"] == "cool_active"
                 ):
-                    return CURRENT_HVAC_COOL
+                    return HVACAction.COOLING
             elif self._device["output_status"] == False:
-                return CURRENT_HVAC_IDLE
+                return HVACAction.IDLE
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
@@ -652,13 +645,13 @@ def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyCl
 
     if model == "Icon RT":
         supported_hvac_modes = [
-            HVAC_MODE_AUTO,
-            HVAC_MODE_HEAT,
-            HVAC_MODE_COOL,
-            HVAC_MODE_OFF,
+            HVACMode.AUTO,
+            HVACMode.HEAT,
+            HVACMode.COOL,
+            HVACMode.OFF,
         ]
     else:
-        supported_hvac_modes = [HVAC_MODE_AUTO, HVAC_MODE_HEAT]
+        supported_hvac_modes = [HVACMode.AUTO, HVACMode.HEAT]
 
     heat_min_temp = 4.5
     heat_max_temp = 35.0
