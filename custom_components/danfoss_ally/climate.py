@@ -238,11 +238,29 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         """Return the current running hvac operation if supported.
         Need to be one of HVACAction.*
         """
+        # 1. Use output_status if it exists (most accurate)
+        if "output_status" in self._device:
+            return (
+                HVACAction.HEATING
+                if self._device["output_status"]
+                else HVACAction.IDLE
+            )
+
+        # 2. Use valveOpening if it exists (Icon RT etc.)
+        if "valveOpening" in self._device:
+            return (
+                HVACAction.HEATING
+                if self._device["valveOpening"] > 0
+                else HVACAction.IDLE
+            )
+
+        # 3. Fallback to work_state (older firmware)
         if "work_state" in self._device:
-            if self._device["work_state"] == "Heat":
-                return HVACAction.HEATING
-            elif self._device["work_state"] == "NoHeat":
-                return HVACAction.IDLE
+            return (
+                HVACAction.HEATING
+                if self._device["work_state"] in ("Heat", "heat_active")
+                else HVACAction.IDLE
+            )
 
     @property
     def temperature_unit(self):
