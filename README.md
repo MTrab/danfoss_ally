@@ -2,6 +2,8 @@
 
 # UNMAINTAINED AS I DO NOT HAVE THE HARDWARE HUB, ONLY THE THERMOSTATS IN ZIGBEE2MQTT, AND IT'S TOO DIFFICULT TO RELY ON ANOTHER PERSONS HARDWARE, DEVELOPING THIS INTEGRATION
 
+If someone will donate a Danfoss Ally hub, I will keep the integration alive, otherwise it'll be archived from Q2 2026
+
 # Danfoss Ally
 
 This is a custom component for Home Assistant to integrate the Danfoss Ally and Icon devices via Danfoss Ally gateway
@@ -45,4 +47,5 @@ See: [Usage.md](Usage.md)
 ## Known issues
 
 - Inconsistency between API and app, devices are not updating correctly between API and app and sometimes the devices renders offline in the app - this is a Danfoss issue and not this integration
+
 
