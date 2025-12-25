@@ -1,9 +1,5 @@
 [![danfoss_ally](https://img.shields.io/github/release/mtrab/danfoss_ally/all.svg?style=plastic&label=Current%20release)](https://github.com/mtrab/danfoss_ally) [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=plastic)](https://github.com/custom-components/hacs) [![downloads](https://img.shields.io/github/downloads/mtrab/danfoss_ally/total?style=plastic&label=Total%20downloads)](https://github.com/mtrab/danfoss_ally) [![Buy me a coffee](https://img.shields.io/static/v1?label=Buy%20me%20a%20coffee&message=and%20say%20thanks&color=orange&logo=buymeacoffee&logoColor=white&style=plastic)](https://www.buymeacoffee.com/mtrab)
 
-# UNMAINTAINED AS I DO NOT HAVE THE HARDWARE HUB, ONLY THE THERMOSTATS IN ZIGBEE2MQTT, AND IT'S TOO DIFFICULT TO RELY ON ANOTHER PERSONS HARDWARE, DEVELOPING THIS INTEGRATION
-
-If someone will donate a Danfoss Ally hub, I will keep the integration alive, otherwise it'll be archived from Q2 2026
-
 # Danfoss Ally
 
 This is a custom component for Home Assistant to integrate the Danfoss Ally and Icon devices via Danfoss Ally gateway
@@ -47,5 +43,6 @@ See: [Usage.md](Usage.md)
 ## Known issues
 
 - Inconsistency between API and app, devices are not updating correctly between API and app and sometimes the devices renders offline in the app - this is a Danfoss issue and not this integration
+
 
 
