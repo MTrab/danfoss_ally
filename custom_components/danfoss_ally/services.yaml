@@ -7,8 +7,6 @@ set_preset_temperature:
     entity:
       integration: danfoss_ally
       domain: climate
-    device:
-      integration: danfoss_ally
   fields:
     temperature:
       name: Temperature
@@ -45,9 +43,6 @@ set_window_state_open:
     entity:
       integration: danfoss_ally
       domain: climate
-    device:
-      integration: danfoss_ally
-      model: "Danfoss Ally™ Radiator Thermostat"
   fields:
     window_open:
       name: Window open
@@ -63,9 +58,6 @@ set_external_temperature:
     entity:
       integration: danfoss_ally
       domain: climate
-    device:
-      integration: danfoss_ally
-      model: "Danfoss Ally™ Radiator Thermostat"
   fields:
     temperature:
       name: Temperature
@@ -78,5 +70,4 @@ set_external_temperature:
           step: 0.1
           mode: box
           unit_of_measurement: "ºC"
-
 
