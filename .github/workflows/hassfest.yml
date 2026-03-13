@@ -1,7 +1,10 @@
-name: Code validation
+name: Hassfest validation
 
 on:
   push:
+    tags-ignore:
+      - "*"
+  pull_request:
   schedule:
     - cron: "0 0 * * *"
 
@@ -14,14 +17,3 @@ jobs:
         uses: actions/checkout@v6
       - name: validation
         uses: home-assistant/actions/hassfest@master
-
-  validate-hacs:
-    name: HACS validation
-    runs-on: "ubuntu-latest"
-    steps:
-      - name: checkout
-        uses: "actions/checkout@v6"
-      - name: validation
-        uses: "hacs/action@main"
-        with:
-          category: "integration"

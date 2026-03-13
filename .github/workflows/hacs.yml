@@ -1,0 +1,21 @@
+name: HACS validation
+
+on:
+  push:
+    tags-ignore:
+      - "*"
+  pull_request:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  validate-hacs:
+    name: HACS validation
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: checkout
+        uses: "actions/checkout@v6"
+      - name: validation
+        uses: "hacs/action@main"
+        with:
+          category: "integration"

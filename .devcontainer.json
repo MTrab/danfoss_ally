@@ -1,6 +1,6 @@
 {
 	"name": "ludeeus/integration_blueprint",
-	"image": "mcr.microsoft.com/devcontainers/python:3.12-bullseye",
+	"image": "mcr.microsoft.com/devcontainers/python:3.14-bookworm",
 	"postCreateCommand": "scripts/setup",
 	"appPort": [
 		"9126:8123"
@@ -17,7 +17,10 @@
 				"ms-python.python",
 				"github.vscode-pull-request-github",
 				"ryanluker.vscode-coverage-gutters",
-				"ms-python.vscode-pylance"
+				"ms-python.vscode-pylance",
+				"ms-python.isort",
+				"ms-python.black-formatter",
+				"openai.chatgpt"
 			],
 			"settings": {
 				"files.eol": "\n",
@@ -35,8 +38,14 @@
 			}
 		}
 	},
-	"remoteUser": "root",
+	"remoteUser": "vscode",
 	"features": {
 		"ghcr.io/devcontainers/features/rust:1": {}
-	}
+	},
+	"mounts": [
+		"source=${localWorkspaceFolder}/config,target=/config,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.codex/auth.json,target=/etc/codex/auth.json,readonly,type=bind",
+		"source=${localWorkspaceFolder}/../pydanfossally,target=/development/github/homeassistant/pydanfossally,type=bind",
+		"source=gh-config,target=/home/vscode/.config/gh,type=volume"
+	]
 }
