@@ -12,14 +12,17 @@ jobs:
   update_release_draft:
     name: Update release draft
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Create Release
         uses: release-drafter/release-drafter@v6
         with:
-          disable-releaser: github.ref != 'refs/heads/main'
+          disable-releaser: ${{ github.ref != 'refs/heads/master' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
