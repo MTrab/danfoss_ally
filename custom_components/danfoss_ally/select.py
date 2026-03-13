@@ -1,4 +1,5 @@
 """Support for Ally select."""
+
 from __future__ import annotations
 
 import logging

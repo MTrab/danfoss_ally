@@ -1,4 +1,5 @@
 """Base class for Danfoss Ally entity."""
+
 from homeassistant.helpers.entity import Entity
 
 from .const import DEFAULT_NAME, DOMAIN

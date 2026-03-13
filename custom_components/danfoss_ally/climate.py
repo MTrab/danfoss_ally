@@ -9,11 +9,11 @@ from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SUPPORT_TARGET_TEMPERATURE,
     ATTR_HVAC_MODE,
     ATTR_PRESET_MODE,
-    HVACAction,
     PRESET_AWAY,
     PRESET_HOME,
-    HVACMode,
     ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
@@ -518,6 +518,7 @@ class IconClimate(AllyClimate):
                     return HVACMode.OFF
                 else:
                     return HVACMode.COOL
+
     @callback
     def _async_update_callback(self):
         """Load data and update state."""
@@ -582,6 +583,7 @@ class IconClimate(AllyClimate):
             elif self._device["output_status"] == False:
                 return HVACAction.IDLE
 
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
@@ -616,6 +618,7 @@ async def async_setup_entry(
     entities = await hass.async_add_executor_job(_generate_entities, ally)
     if entities:
         async_add_entities(entities, True)
+
 
 def _generate_entities(ally: AllyConnector):
     """Create all climate entities."""

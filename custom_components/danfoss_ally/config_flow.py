@@ -1,4 +1,5 @@
 """Config flow for Tado integration."""
+
 import logging
 
 import requests.exceptions
