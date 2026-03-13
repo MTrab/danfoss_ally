@@ -16,9 +16,9 @@ jobs:
       RELEASE_ID: ${{ github.event.release.id }}
       IS_PRERELEASE: ${{ github.event.release.prerelease }}
       DEFAULT_BRANCH: master
-      COMPONENT_PATH: custom_components/landroid_cloud
-      MANIFEST_FILE: custom_components/landroid_cloud/manifest.json
-      ASSET_NAME: landroid_cloud.zip
+      COMPONENT_PATH: custom_components/danfoss_ally
+      MANIFEST_FILE: custom_components/danfoss_ally/manifest.json
+      ASSET_NAME: danfoss_ally.zip
     steps:
       - name: Create GitHub App token
         id: app-token
