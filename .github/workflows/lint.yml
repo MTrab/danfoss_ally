@@ -1,0 +1,56 @@
+name: Lint
+
+on:
+  pull_request:
+  push:
+    tags-ignore:
+      - "*"
+
+jobs:
+  ruff:
+    name: Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Collect changed Python files
+        if: github.event_name == 'pull_request'
+        id: changed
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          python_files="$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD -- '*.py' '.ruff.toml')"
+          {
+            echo "python_files<<EOF"
+            echo "$python_files"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Run ruff check
+        if: github.event_name != 'pull_request'
+        run: ruff check .
+      - name: Run ruff check on changed files
+        if: github.event_name == 'pull_request' && steps.changed.outputs.python_files != ''
+        run: |
+          printf '%s\n' "${{ steps.changed.outputs.python_files }}" | xargs ruff check
+      - name: Skip ruff check when no Python files changed
+        if: github.event_name == 'pull_request' && steps.changed.outputs.python_files == ''
+        run: echo "No Python files changed; skipping ruff check."
+      - name: Run ruff format check
+        if: github.event_name != 'pull_request'
+        run: ruff format --check .
+      - name: Run ruff format check on changed files
+        if: github.event_name == 'pull_request' && steps.changed.outputs.python_files != ''
+        run: |
+          printf '%s\n' "${{ steps.changed.outputs.python_files }}" | xargs ruff format --check
+      - name: Skip ruff format check when no Python files changed
+        if: github.event_name == 'pull_request' && steps.changed.outputs.python_files == ''
+        run: echo "No Python files changed; skipping ruff format check."
