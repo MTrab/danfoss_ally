@@ -2,8 +2,8 @@
   "config": {
     "abort": {
       "already_configured": "Danfoss Ally er allerede konfigureret.",
-      "reauth_successful": "Genautorisation blev gennemfort.",
-      "reconfigure_successful": "Omkonfiguration blev gennemfort."
+      "reauth_successful": "Genautorisation blev gennemført.",
+      "reconfigure_successful": "Omkonfiguration blev gennemført."
     },
     "error": {
       "cannot_connect": "Kunne ikke forbinde",
@@ -39,22 +39,22 @@
   },
   "device_automation": {
     "action_type": {
-      "set_preset_temperature": "Saet forvalgt temperatur"
+      "set_preset_temperature": "Sæt forvalgt temperatur"
     }
   },
   "entity": {
     "binary_sensor": {
       "open_window": {
-        "name": "Aabent vindue"
+        "name": "Åbent vindue"
       },
       "child_lock": {
-        "name": "Boernesikring"
+        "name": "Børnesikring"
       },
       "connectivity": {
         "name": "Forbindelse"
       },
       "setpoint_change_source": {
-        "name": "Saetpunkt aendret lokalt"
+        "name": "Sætpunkt ændret lokalt"
       },
       "pre_heating": {
         "name": "Forvarmning"
@@ -63,16 +63,16 @@
         "name": "Monteringstilstand aktiv"
       },
       "heat_supply_request": {
-        "name": "Anmodning om varmetilfoersel"
+        "name": "Anmodning om varmetilførsel"
       },
       "thermal_actuator": {
         "name": "Termisk aktuator"
       },
       "adaptation_run_status": {
-        "name": "Tilpasningskoersel status"
+        "name": "Tilpasningskørsel status"
       },
       "adaptation_run_valve_characteristic_found": {
-        "name": "Ventilkarakteristik fundet ved tilpasningskoersel"
+        "name": "Ventilkarakteristik fundet ved tilpasningskørsel"
       }
     },
     "climate": {
@@ -81,8 +81,8 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "away": "Vaek",
-              "holiday_away": "Ferie (vaek)",
+              "away": "Væk",
+              "holiday_away": "Ferie (væk)",
               "holiday_home": "Ferie (hjemme)",
               "home": "Hjemme",
               "manual": "Manuel",
@@ -116,7 +116,7 @@
         "name": "Gulvtemperatur"
       },
       "valve_opening": {
-        "name": "Ventilaabning"
+        "name": "Ventilåbning"
       },
       "load_room_mean": {
         "name": "Gennemsnitlig rumbelastning"
@@ -127,7 +127,7 @@
     },
     "switch": {
       "window_toggle": {
-        "name": "Detektering af aabent vindue"
+        "name": "Detektering af åbent vindue"
       },
       "pre_heat": {
         "name": "Forvarmning"
@@ -136,10 +136,10 @@
         "name": "Belastningsbalancering"
       },
       "radiator_covered": {
-        "name": "Radiator tildaekket"
+        "name": "Radiator tildækket"
       },
       "heat_available": {
-        "name": "Varme tilgaengelig"
+        "name": "Varme tilgængelig"
       }
     }
   }

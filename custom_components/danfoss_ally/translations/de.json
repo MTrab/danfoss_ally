@@ -7,7 +7,7 @@
     },
     "error": {
       "cannot_connect": "Verbindung fehlgeschlagen",
-      "invalid_auth": "Ungueltige Authentifizierung",
+      "invalid_auth": "Ungültige Authentifizierung",
       "unknown": "Unerwarteter Fehler"
     },
     "step": {
@@ -24,7 +24,7 @@
           "key": "API Key",
           "secret": "API Secret"
         },
-        "description": "Aktualisiere die Zugangsdaten fuer dein Danfoss Ally Konto.",
+        "description": "Aktualisiere die Zugangsdaten für dein Danfoss Ally Konto.",
         "title": "Danfoss Ally erneut authentifizieren"
       },
       "reconfigure": {
@@ -32,7 +32,7 @@
           "key": "API Key",
           "secret": "API Secret"
         },
-        "description": "Aktualisiere die gespeicherten Zugangsdaten fuer diese Danfoss Ally Konfiguration.",
+        "description": "Aktualisiere die gespeicherten Zugangsdaten für diese Danfoss Ally Konfiguration.",
         "title": "Danfoss Ally neu konfigurieren"
       }
     }
@@ -54,7 +54,7 @@
         "name": "Verbindung"
       },
       "setpoint_change_source": {
-        "name": "Sollwert lokal geaendert"
+        "name": "Sollwert lokal geändert"
       },
       "pre_heating": {
         "name": "Vorheizen"
@@ -63,7 +63,7 @@
         "name": "Montagemodus aktiv"
       },
       "heat_supply_request": {
-        "name": "Waermeanforderung"
+        "name": "Wärmeanforderung"
       },
       "thermal_actuator": {
         "name": "Thermischer Stellantrieb"
@@ -116,7 +116,7 @@
         "name": "Bodentemperatur"
       },
       "valve_opening": {
-        "name": "Ventiloeffnung"
+        "name": "Ventilöffnung"
       },
       "load_room_mean": {
         "name": "Mittlere Raumlast"
@@ -136,10 +136,10 @@
         "name": "Lastenausgleich"
       },
       "radiator_covered": {
-        "name": "Heizkoerper abgedeckt"
+        "name": "Heizkörper abgedeckt"
       },
       "heat_available": {
-        "name": "Waerme verfuegbar"
+        "name": "Wärme verfügbar"
       }
     }
   }
