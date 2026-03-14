@@ -17,8 +17,8 @@ async def test_validate_input_success(monkeypatch) -> None:
     client.aclose.return_value = None
 
     monkeypatch.setattr(
-        "custom_components.danfoss_ally.config_flow.create_client",
-        lambda: client,
+        "custom_components.danfoss_ally.config_flow.DanfossAlly",
+        lambda *args, **kwargs: client,
     )
 
     result = await validate_input({"key": "abc", "secret": "def"})
@@ -34,8 +34,8 @@ async def test_validate_input_invalid_auth(monkeypatch) -> None:
     client.aclose.return_value = None
 
     monkeypatch.setattr(
-        "custom_components.danfoss_ally.config_flow.create_client",
-        lambda: client,
+        "custom_components.danfoss_ally.config_flow.DanfossAlly",
+        lambda *args, **kwargs: client,
     )
 
     with pytest.raises(InvalidAuth):
