@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 import voluptuous as vol
-from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
+from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
@@ -89,23 +89,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> b
 
     entry.runtime_data = DanfossAllyRuntimeData(client=client, coordinator=coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    return True
-
-
-async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate older Danfoss Ally config entries."""
-    if entry.version > 2:
-        _LOGGER.error("Unsupported config entry version %s", entry.version)
-        return False
-
-    if entry.version == 1:
-        _LOGGER.info("Migrating Danfoss Ally config entry from version 1 to 2")
-        hass.config_entries.async_update_entry(
-            entry,
-            data={**entry.data},
-            version=2,
-        )
-
     return True
 
 
