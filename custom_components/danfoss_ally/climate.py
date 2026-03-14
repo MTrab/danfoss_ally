@@ -286,6 +286,7 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
             return
 
         temperature = float(kwargs[ATTR_TEMPERATURE])
+        requested_mode: str | None = None
 
         # Treat direct climate temperature writes as a manual override so the
         # thermostat does not continue running its internal schedule.
@@ -295,17 +296,38 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
             and not self._uses_temp_set_fallback
             and "manual_mode_fast" in self.device
         ):
-            if self.device_value("mode") != "manual":
-                await self.coordinator.async_set_mode(
-                    self._device_id,
-                    "manual",
-                    optimistic_updates={"mode": "manual"},
-                )
-
-            await self.coordinator.async_set_temperature(
+            await self.coordinator.async_set_manual_temperature(
                 self._device_id,
                 temperature,
-                optimistic_updates={"manual_mode_fast": temperature},
+                optimistic_updates={
+                    "mode": "manual",
+                    "manual_mode_fast": temperature,
+                },
+            )
+            return
+
+        if not self._uses_temp_set_fallback:
+            if ATTR_PRESET_MODE in kwargs:
+                requested_mode = PRESET_TO_MODE[
+                    self._normalize_preset_mode(kwargs[ATTR_PRESET_MODE])
+                ]
+            elif kwargs.get(ATTR_HVAC_MODE) == HVACMode.AUTO:
+                requested_mode = "at_home"
+            elif kwargs.get(ATTR_HVAC_MODE) == HVACMode.HEAT:
+                requested_mode = "manual"
+
+        if requested_mode is not None:
+            setpoint_code = self._get_setpoint_code_for_mode(requested_mode)
+            optimistic_updates = {"mode": requested_mode, setpoint_code: temperature}
+
+            if requested_mode == "manual":
+                optimistic_updates["manual_mode_fast"] = temperature
+
+            await self.coordinator.async_set_temperature_for_mode(
+                self._device_id,
+                temperature,
+                requested_mode,
+                optimistic_updates=optimistic_updates,
             )
             return
 
@@ -318,13 +340,6 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
             code=setpoint_code,
             optimistic_updates=optimistic_updates,
         )
-
-        if not self._uses_temp_set_fallback and "manual_mode_fast" in self.device:
-            await self.coordinator.async_set_temperature(
-                self._device_id,
-                temperature,
-                optimistic_updates={"manual_mode_fast": temperature},
-            )
 
     async def async_set_preset_temperature(self, **kwargs: Any) -> None:
         """Handle the custom preset temperature service."""
