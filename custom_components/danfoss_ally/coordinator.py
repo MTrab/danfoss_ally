@@ -34,12 +34,17 @@ class DanfossAllyDataUpdateCoordinator(
 ):
     """Fetch and cache Danfoss Ally device data."""
 
-    def __init__(self, hass: HomeAssistant, client: DanfossAlly) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        client: DanfossAlly,
+        entry: DanfossConfigEntry,
+    ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
-            config_entry=None,
+            config_entry=entry,
             name=DOMAIN,
             update_interval=SCAN_INTERVAL,
         )
