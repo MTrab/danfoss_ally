@@ -56,7 +56,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> bool:
     """Set up Danfoss Ally from a config entry."""
-    client = await hass.async_add_executor_job(create_client)
+    client = create_client()
 
     try:
         authorized = await client.initialize(
