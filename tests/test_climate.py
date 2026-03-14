@@ -67,29 +67,29 @@ def make_device(**overrides):
 
 
 @pytest.mark.asyncio
-async def test_set_temperature_updates_manual_mode_fast_for_auto_mode() -> None:
-    """Changing setpoint in auto mode should also refresh manual_mode_fast."""
+async def test_set_temperature_switches_auto_mode_to_manual_override() -> None:
+    """Changing setpoint directly should switch scheduled mode to manual."""
     coordinator = FakeCoordinator({"device-1": make_device(mode="at_home")})
     entity = DanfossAllyClimate(coordinator, "device-1")
 
     await entity.async_set_temperature(temperature=22.0)
 
+    assert coordinator.mode_calls == [("device-1", "manual", {"mode": "manual"})]
     assert coordinator.temperature_calls == [
-        ("device-1", 22.0, "at_home_setting", {"at_home_setting": 22.0}),
         ("device-1", 22.0, "manual_mode_fast", {"manual_mode_fast": 22.0}),
     ]
 
 
 @pytest.mark.asyncio
 async def test_set_temperature_repeats_manual_mode_fast_for_manual_mode() -> None:
-    """Manual mode should still push the explicit manual setpoint write."""
+    """Manual mode should keep writing the explicit manual setpoint."""
     coordinator = FakeCoordinator({"device-1": make_device(mode="manual")})
     entity = DanfossAllyClimate(coordinator, "device-1")
 
     await entity.async_set_temperature(temperature=23.0)
 
+    assert coordinator.mode_calls == []
     assert coordinator.temperature_calls == [
-        ("device-1", 23.0, "manual_mode_fast", {"manual_mode_fast": 23.0}),
         ("device-1", 23.0, "manual_mode_fast", {"manual_mode_fast": 23.0}),
     ]
 

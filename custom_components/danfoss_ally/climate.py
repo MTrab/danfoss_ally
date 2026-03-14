@@ -286,6 +286,29 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
             return
 
         temperature = float(kwargs[ATTR_TEMPERATURE])
+
+        # Treat direct climate temperature writes as a manual override so the
+        # thermostat does not continue running its internal schedule.
+        if (
+            ATTR_PRESET_MODE not in kwargs
+            and ATTR_HVAC_MODE not in kwargs
+            and not self._uses_temp_set_fallback
+            and "manual_mode_fast" in self.device
+        ):
+            if self.device_value("mode") != "manual":
+                await self.coordinator.async_set_mode(
+                    self._device_id,
+                    "manual",
+                    optimistic_updates={"mode": "manual"},
+                )
+
+            await self.coordinator.async_set_temperature(
+                self._device_id,
+                temperature,
+                optimistic_updates={"manual_mode_fast": temperature},
+            )
+            return
+
         setpoint_code = self._get_target_setpoint_code(kwargs)
         optimistic_updates = {setpoint_code: temperature}
 
