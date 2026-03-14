@@ -1,37 +1,35 @@
-"""Danfoss_ally consts."""
+"""Constants for the Danfoss Ally integration."""
 
-from homeassistant.components.climate.const import HVACMode
+from __future__ import annotations
 
-THERMOSTAT_MODE_AUTO = "hot"
-THERMOSTAT_MODE_MANUAL = "manual"
-THERMOSTAT_MODE_OFF = "pause"
+from datetime import timedelta
 
-HVAC_MODE_MANUAL = "manual"
-
-PRESET_MANUAL = "Manual"
-PRESET_PAUSE = "Pause"
-PRESET_HOLIDAY_AWAY = "Holiday (Away)"
-PRESET_HOLIDAY_HOME = "Holiday (Home)"
-
-HA_TO_DANFOSS_HVAC_MODE_MAP = {
-    HVACMode.OFF: THERMOSTAT_MODE_OFF,
-    HVACMode.HEAT: THERMOSTAT_MODE_MANUAL,
-    HVACMode.AUTO: THERMOSTAT_MODE_AUTO,
-}
-
-DANFOSS_TO_HA_HVAC_MODE_MAP = {
-    value: key for key, value in HA_TO_DANFOSS_HVAC_MODE_MAP.items()
-}
+from homeassistant.const import Platform
 
 CONF_KEY = "key"
 CONF_SECRET = "secret"
-DATA = "data"
+
 DEFAULT_NAME = "Danfoss"
 DOMAIN = "danfoss_ally"
-SIGNAL_ALLY_UPDATE_RECEIVED = "ally_update_received"
-UNIQUE_ID = "unique_id"
-UPDATE_LISTENER = "update_listener"
-UPDATE_TRACK = "update_track"
+API_TIMEOUT = 10.0
+SCAN_INTERVAL = timedelta(seconds=45)
+
+PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
+    Platform.CLIMATE,
+    Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.SELECT,
+]
+
+PRESET_MANUAL = "manual"
+PRESET_PAUSE = "pause"
+PRESET_HOLIDAY_AWAY = "holiday_away"
+PRESET_HOLIDAY_HOME = "holiday_home"
+
+LEGACY_PRESET_ALIASES = {
+    "holiday": PRESET_HOLIDAY_AWAY,
+    "holiday_sat": PRESET_HOLIDAY_HOME,
+}
 
 ACTION_TYPE_SET_PRESET_TEMPERATURE = "set_preset_temperature"
-ATTR_SETPOINT = "setpoint"
