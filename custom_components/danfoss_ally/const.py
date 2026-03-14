@@ -11,7 +11,7 @@ CONF_SECRET = "secret"
 
 DEFAULT_NAME = "Danfoss"
 DOMAIN = "danfoss_ally"
-API_TIMEOUT = 10.0
+API_TIMEOUT = 30.0
 SCAN_INTERVAL = timedelta(seconds=45)
 
 PLATFORMS: list[Platform] = [
