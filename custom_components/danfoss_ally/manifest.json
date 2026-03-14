@@ -13,7 +13,7 @@
         "pydanfossally"
     ],
     "requirements": [
-        "pydanfossally@git+https://github.com/MTrab/pydanfossally.git@enhancement/write-semantics"
+        "pydanfossally@git+https://github.com/MTrab/pydanfossally.git@master"
     ],
     "version": "1.3.7"
 }
