@@ -120,6 +120,37 @@ class DanfossAllyDataUpdateCoordinator(
             error_message=f"Failed to set temperature for {device_id}",
         )
 
+    async def async_set_temperature_for_mode(
+        self,
+        device_id: str,
+        temperature: float,
+        mode: str,
+        *,
+        optimistic_updates: dict[str, Any] | None = None,
+    ) -> None:
+        """Write a mode-aware temperature setpoint and refresh state."""
+        await self._async_run_write(
+            device_id,
+            self.client.set_temperature_for_mode(device_id, temperature, mode),
+            optimistic_updates=optimistic_updates,
+            error_message=f"Failed to set temperature for {device_id}",
+        )
+
+    async def async_set_manual_temperature(
+        self,
+        device_id: str,
+        temperature: float,
+        *,
+        optimistic_updates: dict[str, Any] | None = None,
+    ) -> None:
+        """Write a manual temperature override and refresh state."""
+        await self._async_run_write(
+            device_id,
+            self.client.set_manual_temperature(device_id, temperature),
+            optimistic_updates=optimistic_updates,
+            error_message=f"Failed to set temperature for {device_id}",
+        )
+
     async def async_send_commands(
         self,
         device_id: str,
