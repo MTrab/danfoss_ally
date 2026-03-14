@@ -11,10 +11,9 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
-from pydanfossally import exceptions
+from pydanfossally import DanfossAlly, exceptions
 
-from .const import CONF_KEY, CONF_SECRET, DOMAIN
-from .coordinator import create_client
+from .const import API_TIMEOUT, CONF_KEY, CONF_SECRET, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ STEP_SCHEMA = vol.Schema(
 
 async def validate_input(data: Mapping[str, str]) -> dict[str, str]:
     """Validate credentials against the Danfoss Ally API."""
-    client = create_client()
+    client = DanfossAlly(timeout=API_TIMEOUT)
     try:
         authorized = await client.initialize(data[CONF_KEY], data[CONF_SECRET])
     except (TimeoutError, ConnectionError, exceptions.APIError) as err:
