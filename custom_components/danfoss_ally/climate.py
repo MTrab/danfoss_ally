@@ -194,7 +194,7 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
             return HVACAction.HEATING
 
         if valve_opening is not None:
-            return HVACAction.HEATING if float(valve_opening) > 0 else HVACAction.IDLE
+            return HVACAction.HEATING if float(valve_opening) > 1 else HVACAction.IDLE
 
         if work_state in {"Heat", "heat_active"}:
             return HVACAction.HEATING
