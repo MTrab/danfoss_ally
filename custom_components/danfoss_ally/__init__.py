@@ -77,7 +77,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> b
         await client.aclose()
         raise ConfigEntryAuthFailed("Authentication with Danfoss Ally failed")
 
-    coordinator = DanfossAllyDataUpdateCoordinator(hass, client)
+    coordinator = DanfossAllyDataUpdateCoordinator(hass, client, entry)
 
     try:
         await coordinator.async_config_entry_first_refresh()
