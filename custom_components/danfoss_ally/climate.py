@@ -296,7 +296,7 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
             optimistic_updates=optimistic_updates,
         )
 
-        if setpoint_code != "manual_mode_fast" and "manual_mode_fast" in self.device:
+        if not self._uses_temp_set_fallback and "manual_mode_fast" in self.device:
             await self.coordinator.async_set_temperature(
                 self._device_id,
                 temperature,

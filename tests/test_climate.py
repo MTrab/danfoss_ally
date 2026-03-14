@@ -80,6 +80,20 @@ async def test_set_temperature_updates_manual_mode_fast_for_auto_mode() -> None:
     ]
 
 
+@pytest.mark.asyncio
+async def test_set_temperature_repeats_manual_mode_fast_for_manual_mode() -> None:
+    """Manual mode should still push the explicit manual setpoint write."""
+    coordinator = FakeCoordinator({"device-1": make_device(mode="manual")})
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    await entity.async_set_temperature(temperature=23.0)
+
+    assert coordinator.temperature_calls == [
+        ("device-1", 23.0, "manual_mode_fast", {"manual_mode_fast": 23.0}),
+        ("device-1", 23.0, "manual_mode_fast", {"manual_mode_fast": 23.0}),
+    ]
+
+
 def test_current_temperature_prefers_external_sensor_when_radiator_is_covered() -> None:
     """Covered radiators should expose the external sensor temperature as current."""
     coordinator = FakeCoordinator(
