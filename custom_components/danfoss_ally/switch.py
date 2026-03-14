@@ -102,6 +102,14 @@ class DanfossAllySwitch(DanfossAllyEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the switch on."""
+        if self.entity_description.key == "radiator_covered":
+            await self.coordinator.async_set_radiator_covered(
+                self._device_id,
+                True,
+                optimistic_updates={self.entity_description.key: True},
+            )
+            return
+
         await self.coordinator.async_send_commands(
             self._device_id,
             [(self.entity_description.key, True)],
@@ -110,6 +118,18 @@ class DanfossAllySwitch(DanfossAllyEntity, SwitchEntity):
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the switch off."""
+        if self.entity_description.key == "radiator_covered":
+            await self.coordinator.async_set_radiator_covered(
+                self._device_id,
+                False,
+                optimistic_updates={
+                    self.entity_description.key: False,
+                    "ext_measured_rs": -80.0,
+                    "external_sensor_temperature": -80.0,
+                },
+            )
+            return
+
         await self.coordinator.async_send_commands(
             self._device_id,
             [(self.entity_description.key, False)],
