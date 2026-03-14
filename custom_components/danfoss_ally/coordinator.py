@@ -13,7 +13,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pydanfossally import DanfossAlly, exceptions
 
-from .const import API_TIMEOUT, DOMAIN, SCAN_INTERVAL
+from .const import DOMAIN, SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -166,8 +166,3 @@ class DanfossAllyDataUpdateCoordinator(
         new_data = {**self.data}
         new_data[device_id] = {**self.data.get(device_id, {}), **updates}
         self.async_set_updated_data(new_data)
-
-
-def create_client() -> DanfossAlly:
-    """Create the Danfoss Ally API client."""
-    return DanfossAlly(timeout=API_TIMEOUT)
