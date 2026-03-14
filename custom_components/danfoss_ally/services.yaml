@@ -32,9 +32,9 @@ set_preset_temperature:
             - label: "Pause"
               value: "pause"
             - label: "Holiday (Home)"
-              value: "holiday_sat"
+              value: "holiday_home"
             - label: "Holiday (Away)"
-              value: "holiday"
+              value: "holiday_away"
 
 set_window_state_open:
   name: Set window open state
@@ -70,4 +70,3 @@ set_external_temperature:
           step: 0.1
           mode: box
           unit_of_measurement: "ºC"
-
