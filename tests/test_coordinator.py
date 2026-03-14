@@ -115,3 +115,43 @@ def test_apply_pending_writes_uses_new_response_timestamp_for_confirmation() -> 
     assert merged["device-1"]["mode"] == "manual"
     assert merged["device-1"]["manual_mode_fast"] == 23.0
     assert coordinator._pending_writes == {}
+
+
+def test_is_stale_snapshot_rejects_unchanged_response_timestamp() -> None:
+    """Coordinator snapshots should be ignored until the API timestamp changes."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator.data = {
+        "device-1": {
+            "mode": "manual",
+            "last_response_time": 101,
+        }
+    }
+
+    assert coordinator._is_stale_snapshot(
+        {
+            "device-1": {
+                "mode": "at_home",
+                "last_response_time": 101,
+            }
+        }
+    )
+
+
+def test_is_stale_snapshot_accepts_newer_response_timestamp() -> None:
+    """Coordinator snapshots should be accepted once the API timestamp advances."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator.data = {
+        "device-1": {
+            "mode": "manual",
+            "last_response_time": 101,
+        }
+    }
+
+    assert not coordinator._is_stale_snapshot(
+        {
+            "device-1": {
+                "mode": "at_home",
+                "last_response_time": 102,
+            }
+        }
+    )

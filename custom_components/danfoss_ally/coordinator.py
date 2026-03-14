@@ -88,6 +88,9 @@ class DanfossAllyDataUpdateCoordinator(
                 f"Failed to fetch Danfoss Ally devices: {_format_error(err)}"
             ) from err
 
+        if self._is_stale_snapshot(devices):
+            return self.data or devices
+
         return self._apply_pending_writes(devices)
 
     async def async_set_mode(
@@ -325,3 +328,36 @@ class DanfossAllyDataUpdateCoordinator(
                 return None
 
         return None
+
+    def _is_stale_snapshot(self, devices: dict[str, dict[str, Any]]) -> bool:
+        """Return whether a polled snapshot should be ignored entirely."""
+        if not self.data:
+            return False
+
+        incoming_response_time = self._get_snapshot_response_time(devices)
+        current_response_time = self._get_snapshot_response_time(self.data)
+
+        if incoming_response_time is None or current_response_time is None:
+            return False
+
+        return incoming_response_time <= current_response_time
+
+    def _get_snapshot_response_time(
+        self,
+        devices: dict[str, dict[str, Any]],
+    ) -> int | None:
+        """Return the newest response timestamp found in one snapshot."""
+        response_times = [
+            response_time
+            for device in devices.values()
+            if (
+                response_time := self._coerce_response_time(
+                    device.get("last_response_time")
+                )
+            )
+            is not None
+        ]
+        if not response_times:
+            return None
+
+        return max(response_times)
