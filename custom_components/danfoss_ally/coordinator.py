@@ -158,6 +158,36 @@ class DanfossAllyDataUpdateCoordinator(
             error_message=f"Failed to set temperature for {device_id}",
         )
 
+    async def async_set_external_temperature(
+        self,
+        device_id: str,
+        temperature: float | None,
+        *,
+        optimistic_updates: dict[str, Any] | None = None,
+    ) -> None:
+        """Write an external sensor temperature and refresh state."""
+        await self._async_run_write(
+            device_id,
+            self.client.set_external_temperature(device_id, temperature),
+            optimistic_updates=optimistic_updates,
+            error_message=f"Failed to set external temperature for {device_id}",
+        )
+
+    async def async_set_radiator_covered(
+        self,
+        device_id: str,
+        covered: bool,
+        *,
+        optimistic_updates: dict[str, Any] | None = None,
+    ) -> None:
+        """Write the covered-radiator mode and refresh state."""
+        await self._async_run_write(
+            device_id,
+            self.client.set_radiator_covered(device_id, covered),
+            optimistic_updates=optimistic_updates,
+            error_message=f"Failed to set radiator covered for {device_id}",
+        )
+
     async def async_send_commands(
         self,
         device_id: str,

@@ -386,13 +386,11 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
             return
 
         self._last_external_temperature_write = now
-        await self.coordinator.async_send_commands(
+        await self.coordinator.async_set_external_temperature(
             self._device_id,
-            [
-                ("ext_measured_rs", temp_100),
-                ("sensor_avg_temp", temp_10),
-            ],
+            temperature,
             optimistic_updates={
+                "radiator_covered": True,
                 "ext_measured_rs": temp_100 / 100,
                 "external_sensor_temperature": temp_10 / 10,
             },
