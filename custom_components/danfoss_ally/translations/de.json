@@ -1,8 +1,146 @@
 {
-    "config": {
-        "error": {
-            "cannot_connect": "Verbindung ist nicht möglich",
-            "unknown": "Unerwarteter Fehler"
-        }
+  "config": {
+    "abort": {
+      "already_configured": "Danfoss Ally ist bereits eingerichtet.",
+      "reauth_successful": "Die erneute Authentifizierung war erfolgreich.",
+      "reconfigure_successful": "Die Neukonfiguration war erfolgreich."
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "invalid_auth": "Ungueltige Authentifizierung",
+      "unknown": "Unerwarteter Fehler"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "key": "API Key",
+          "secret": "API Secret"
+        },
+        "description": "Verbinde Home Assistant mit deinem Danfoss Ally Konto.",
+        "title": "Danfoss Ally verbinden"
+      },
+      "reauth_confirm": {
+        "data": {
+          "key": "API Key",
+          "secret": "API Secret"
+        },
+        "description": "Aktualisiere die Zugangsdaten fuer dein Danfoss Ally Konto.",
+        "title": "Danfoss Ally erneut authentifizieren"
+      },
+      "reconfigure": {
+        "data": {
+          "key": "API Key",
+          "secret": "API Secret"
+        },
+        "description": "Aktualisiere die gespeicherten Zugangsdaten fuer diese Danfoss Ally Konfiguration.",
+        "title": "Danfoss Ally neu konfigurieren"
+      }
     }
+  },
+  "device_automation": {
+    "action_type": {
+      "set_preset_temperature": "Voreingestellte Temperatur setzen"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "open_window": {
+        "name": "Fenster offen"
+      },
+      "child_lock": {
+        "name": "Kindersicherung"
+      },
+      "connectivity": {
+        "name": "Verbindung"
+      },
+      "setpoint_change_source": {
+        "name": "Sollwert lokal geaendert"
+      },
+      "pre_heating": {
+        "name": "Vorheizen"
+      },
+      "mounting_mode_active": {
+        "name": "Montagemodus aktiv"
+      },
+      "heat_supply_request": {
+        "name": "Waermeanforderung"
+      },
+      "thermal_actuator": {
+        "name": "Thermischer Stellantrieb"
+      },
+      "adaptation_run_status": {
+        "name": "Status der Anpassungsfahrt"
+      },
+      "adaptation_run_valve_characteristic_found": {
+        "name": "Ventilkennlinie bei Anpassungsfahrt gefunden"
+      }
+    },
+    "climate": {
+      "thermostat": {
+        "name": "Thermostat",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "away": "Abwesend",
+              "holiday_away": "Urlaub (abwesend)",
+              "holiday_home": "Urlaub (zuhause)",
+              "home": "Zuhause",
+              "manual": "Manuell",
+              "pause": "Pause"
+            }
+          }
+        }
+      }
+    },
+    "select": {
+      "heating_control_scaling": {
+        "name": "Skalierung der Heizungsregelung",
+        "state": {
+          "moderate": "Moderat (30 Min.)",
+          "quick": "Schnell (5 Min.)",
+          "slow": "Langsam (80 Min.)"
+        }
+      }
+    },
+    "sensor": {
+      "temperature": {
+        "name": "Temperatur"
+      },
+      "battery": {
+        "name": "Batterie"
+      },
+      "humidity": {
+        "name": "Luftfeuchtigkeit"
+      },
+      "floor_temperature": {
+        "name": "Bodentemperatur"
+      },
+      "valve_opening": {
+        "name": "Ventiloeffnung"
+      },
+      "load_room_mean": {
+        "name": "Mittlere Raumlast"
+      },
+      "external_sensor_temperature": {
+        "name": "Externe Sensortemperatur"
+      }
+    },
+    "switch": {
+      "window_toggle": {
+        "name": "Fenster-offen-Erkennung"
+      },
+      "pre_heat": {
+        "name": "Vorheizen"
+      },
+      "load_balance": {
+        "name": "Lastenausgleich"
+      },
+      "radiator_covered": {
+        "name": "Heizkoerper abgedeckt"
+      },
+      "heat_available": {
+        "name": "Waerme verfuegbar"
+      }
+    }
+  }
 }

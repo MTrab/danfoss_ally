@@ -1,20 +1,146 @@
 {
-    "config": {
-        "abort": {
-            "already_configured": "Enheden er allerede konfigureret"
+  "config": {
+    "abort": {
+      "already_configured": "Danfoss Ally er allerede konfigureret.",
+      "reauth_successful": "Genautorisation blev gennemfort.",
+      "reconfigure_successful": "Omkonfiguration blev gennemfort."
+    },
+    "error": {
+      "cannot_connect": "Kunne ikke forbinde",
+      "invalid_auth": "Ugyldig autentifikation",
+      "unknown": "Uventet fejl"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "key": "API Key",
+          "secret": "API Secret"
         },
-        "error": {
-            "cannot_connect": "Kunne ikke forbinde",
-            "invalid_auth": "Forkert API key eller API secret",
-            "unknown": "Uventet fejl"
+        "description": "Forbind Home Assistant til din Danfoss Ally konto.",
+        "title": "Forbind Danfoss Ally"
+      },
+      "reauth_confirm": {
+        "data": {
+          "key": "API Key",
+          "secret": "API Secret"
         },
-        "step": {
-            "user": {
-                "data": {
-                    "key": "API Key",
-                    "secret": "API Secret"
-                }
-            }
-        }
+        "description": "Opdater legitimationsoplysningerne til din Danfoss Ally konto.",
+        "title": "Genautoriser Danfoss Ally"
+      },
+      "reconfigure": {
+        "data": {
+          "key": "API Key",
+          "secret": "API Secret"
+        },
+        "description": "Opdater de gemte legitimationsoplysninger for denne Danfoss Ally konfiguration.",
+        "title": "Omkonfigurer Danfoss Ally"
+      }
     }
+  },
+  "device_automation": {
+    "action_type": {
+      "set_preset_temperature": "Saet forvalgt temperatur"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "open_window": {
+        "name": "Aabent vindue"
+      },
+      "child_lock": {
+        "name": "Boernesikring"
+      },
+      "connectivity": {
+        "name": "Forbindelse"
+      },
+      "setpoint_change_source": {
+        "name": "Saetpunkt aendret lokalt"
+      },
+      "pre_heating": {
+        "name": "Forvarmning"
+      },
+      "mounting_mode_active": {
+        "name": "Monteringstilstand aktiv"
+      },
+      "heat_supply_request": {
+        "name": "Anmodning om varmetilfoersel"
+      },
+      "thermal_actuator": {
+        "name": "Termisk aktuator"
+      },
+      "adaptation_run_status": {
+        "name": "Tilpasningskoersel status"
+      },
+      "adaptation_run_valve_characteristic_found": {
+        "name": "Ventilkarakteristik fundet ved tilpasningskoersel"
+      }
+    },
+    "climate": {
+      "thermostat": {
+        "name": "Termostat",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "away": "Vaek",
+              "holiday_away": "Ferie (vaek)",
+              "holiday_home": "Ferie (hjemme)",
+              "home": "Hjemme",
+              "manual": "Manuel",
+              "pause": "Pause"
+            }
+          }
+        }
+      }
+    },
+    "select": {
+      "heating_control_scaling": {
+        "name": "Skalering af varmestyring",
+        "state": {
+          "moderate": "Moderat (30 min)",
+          "quick": "Hurtig (5 min)",
+          "slow": "Langsom (80 min)"
+        }
+      }
+    },
+    "sensor": {
+      "temperature": {
+        "name": "Temperatur"
+      },
+      "battery": {
+        "name": "Batteri"
+      },
+      "humidity": {
+        "name": "Luftfugtighed"
+      },
+      "floor_temperature": {
+        "name": "Gulvtemperatur"
+      },
+      "valve_opening": {
+        "name": "Ventilaabning"
+      },
+      "load_room_mean": {
+        "name": "Gennemsnitlig rumbelastning"
+      },
+      "external_sensor_temperature": {
+        "name": "Ekstern sensortemperatur"
+      }
+    },
+    "switch": {
+      "window_toggle": {
+        "name": "Detektering af aabent vindue"
+      },
+      "pre_heat": {
+        "name": "Forvarmning"
+      },
+      "load_balance": {
+        "name": "Belastningsbalancering"
+      },
+      "radiator_covered": {
+        "name": "Radiator tildaekket"
+      },
+      "heat_available": {
+        "name": "Varme tilgaengelig"
+      }
+    }
+  }
 }
