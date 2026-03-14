@@ -18,6 +18,11 @@ from .const import API_TIMEOUT, DOMAIN, SCAN_INTERVAL
 _LOGGER = logging.getLogger(__name__)
 
 
+def _format_error(err: BaseException) -> str:
+    """Return a useful error string even for exceptions without a message."""
+    return str(err) or err.__class__.__name__
+
+
 @dataclass(slots=True)
 class DanfossAllyRuntimeData:
     """Runtime data stored on a config entry."""
@@ -64,7 +69,9 @@ class DanfossAllyDataUpdateCoordinator(
             exceptions.APIError,
             exceptions.UnexpectedError,
         ) as err:
-            raise UpdateFailed(f"Failed to fetch Danfoss Ally devices: {err}") from err
+            raise UpdateFailed(
+                f"Failed to fetch Danfoss Ally devices: {_format_error(err)}"
+            ) from err
 
         return devices
 
@@ -138,7 +145,9 @@ class DanfossAllyDataUpdateCoordinator(
             exceptions.APIError,
             exceptions.UnexpectedError,
         ) as err:
-            raise HomeAssistantError(error_message) from err
+            raise HomeAssistantError(
+                f"{error_message}: {_format_error(err)}"
+            ) from err
 
         if result is False:
             raise HomeAssistantError(error_message)
