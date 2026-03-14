@@ -44,6 +44,7 @@ See: [Usage.md](Usage.md)
 ## Known issues
 
 - Inconsistency between API and app, devices are not updating correctly between API and app and sometimes the devices renders offline in the app - this is a Danfoss issue and not this integration
+- Danfoss Ally cloud/API synchronization is not real-time. Changes made from Home Assistant, the Danfoss app, or directly on a device may take a few minutes before they are reflected consistently across the API and the physical device state.
 
 
 
