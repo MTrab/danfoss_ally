@@ -126,11 +126,9 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
     @property
     def current_temperature(self) -> float | None:
         """Return the current room temperature."""
-        if (
-            self.device_value("radiator_covered", default=False)
-            and self.device_value("external_sensor_temperature") is not None
-        ):
-            return self.device_value("external_sensor_temperature")
+        external_sensor_temperature = self.device_value("external_sensor_temperature")
+        if external_sensor_temperature not in (None, -80, -80.0):
+            return external_sensor_temperature
 
         return self.device_value("temperature", default=self.target_temperature)
 
