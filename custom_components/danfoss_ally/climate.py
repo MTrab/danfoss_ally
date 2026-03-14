@@ -1,12 +1,14 @@
-"""Support for Danfoss Ally thermostats."""
+"""Climate support for Danfoss Ally."""
 
-import functools as ft
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
 import logging
-from datetime import datetime
+from typing import Any
 
 import voluptuous as vol
 from homeassistant.components.climate import ClimateEntity
-from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SUPPORT_TARGET_TEMPERATURE,
+from homeassistant.components.climate.const import (
     ATTR_HVAC_MODE,
     ATTR_PRESET_MODE,
     PRESET_AWAY,
@@ -15,600 +17,43 @@ from homeassistant.components.climate.const import (  # SUPPORT_PRESET_MODE,; SU
     HVACAction,
     HVACMode,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers import entity_platform
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv, entity_platform
 
-from . import AllyConnector
 from .const import (
-    DATA,
-    DOMAIN,
+    LEGACY_PRESET_ALIASES,
     PRESET_HOLIDAY_AWAY,
     PRESET_HOLIDAY_HOME,
     PRESET_MANUAL,
     PRESET_PAUSE,
-    SIGNAL_ALLY_UPDATE_RECEIVED,
 )
-from .entity import AllyDeviceEntity
-
-# Custom preset for pause mode
-
+from .coordinator import DanfossConfigEntry
+from .entity import DanfossAllyEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-
-class AllyClimate(AllyDeviceEntity, ClimateEntity):
-    """Representation of a Danfoss Ally climate entity."""
-
-    def __init__(
-        self,
-        ally,
-        name,
-        device_id,
-        model,
-        heat_min_temp,
-        heat_max_temp,
-        heat_step,
-        supported_hvac_modes,
-        support_flags,
-    ):
-        """Initialize Danfoss Ally climate entity."""
-        self._ally = ally
-        self._device = ally.devices[device_id]
-        self._device_id = device_id
-        super().__init__(name, device_id, "climate", model)
-
-        _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
-
-        self._unique_id = f"climate_{device_id}_ally"
-
-        # Check if we should fall back to attribute temp_set (if thermostat does not have manual_mode_fast, at_home_setting, leaving_home_setting, pause_setting, holiday_setting but does have temp_set (maybe it is an older type of thermostat))
-        self._fallback_to_temp_set = (
-            not (
-                "manual_mode_fast" in self._device
-                and "at_home_setting" in self._device
-                and "leaving_home_setting" in self._device
-                and "pause_setting" in self._device
-                and "holiday_setting" in self._device
-            )
-        ) and "temp_set" in self._device
-        _LOGGER.debug(
-            "Device_id: %s --- _fallback_to_temp_set: %s",
-            self._device_id,
-            self._fallback_to_temp_set,
-        )
-
-        self._supported_hvac_modes = supported_hvac_modes
-        self._supported_preset_modes = [
-            PRESET_HOME,
-            PRESET_AWAY,
-            PRESET_PAUSE,
-            PRESET_MANUAL,
-            PRESET_HOLIDAY_HOME,
-            PRESET_HOLIDAY_AWAY,
-        ]
-        self._support_flags = support_flags
-
-        self._available = False
-
-        # Current temperature
-        self._cur_temp = self.get_current_temperature()
-
-        # Low temperature set in Ally app
-        if "lower_temp" in self._device:
-            self._heat_min_temp = self._device["lower_temp"]
-        else:
-            self._heat_min_temp = heat_min_temp
-
-        # High temperature set in Ally app
-        if "upper_temp" in self._device:
-            self._heat_max_temp = self._device["upper_temp"]
-        else:
-            self._heat_max_temp = heat_max_temp
-
-        self._heat_step = heat_step
-        self._target_temp = None
-        self._ext_temp_last_update = None
-
-    async def async_added_to_hass(self):
-        """Register for sensor updates."""
-
-        self.async_on_remove(
-            async_dispatcher_connect(
-                self.hass,
-                SIGNAL_ALLY_UPDATE_RECEIVED,
-                self._async_update_callback,
-            )
-        )
-
-    @property
-    def supported_features(self):
-        """Return the list of supported features."""
-        return self._support_flags
-
-    @property
-    def name(self):
-        """Return the name of the entity."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return the unique id."""
-        return self._unique_id
-
-    @property
-    def current_temperature(self):
-        """Return the sensor temperature."""
-        return self.get_current_temperature()
-
-    def get_current_temperature(self):
-        """Return current temperature."""
-        if "temperature" in self._device:
-            if (
-                "radiator_covered" in self._device
-                and self._device["radiator_covered"]
-                and "external_sensor_temperature" in self._device
-            ):
-                return self._device["external_sensor_temperature"]
-            else:
-                return self._device["temperature"]
-        else:
-            return self.get_setpoint_for_current_mode()
-
-    @property
-    def hvac_mode(self):
-        """Return hvac operation ie. heat, cool mode.
-        Need to be one of HVAC_MODE_*.
-        """
-        if "mode" in self._device:
-            if (
-                self._device["mode"] == "at_home"
-                or self._device["mode"] == "leaving_home"
-                or self._device["mode"] == "holiday_sat"
-            ):
-                return HVACMode.AUTO
-            elif (
-                self._device["mode"] == "manual"
-                or self._device["mode"] == "pause"
-                or self._device["mode"] == "holiday"
-            ):
-                return HVACMode.HEAT
-
-    @property
-    def preset_mode(self):
-        """The current active preset."""
-        if "mode" in self._device:
-            if self._device["mode"] == "at_home":
-                return PRESET_HOME
-            elif self._device["mode"] == "leaving_home":
-                return PRESET_AWAY
-            elif self._device["mode"] == "pause":
-                return PRESET_PAUSE
-            elif self._device["mode"] == "manual":
-                return PRESET_MANUAL
-            elif self._device["mode"] == "holiday_sat":
-                return PRESET_HOLIDAY_HOME
-            elif self._device["mode"] == "holiday":
-                return PRESET_HOLIDAY_AWAY
-
-    @property
-    def hvac_modes(self):
-        """Return the list of available hvac operation modes.
-        Need to be a subset of HVAC_MODES.
-        """
-        return self._supported_hvac_modes
-
-    @property
-    def preset_modes(self):
-        """Return the list of available preset modes."""
-        return self._supported_preset_modes
-
-    def set_preset_mode(self, preset_mode):
-        """Set new target preset mode."""
-
-        _LOGGER.debug("Setting preset mode to %s", preset_mode)
-
-        if preset_mode == PRESET_HOME:
-            mode = "at_home"
-        elif preset_mode == PRESET_AWAY:
-            mode = "leaving_home"
-        elif preset_mode == PRESET_PAUSE:
-            mode = "pause"
-        elif preset_mode == PRESET_MANUAL:
-            mode = "manual"
-        elif preset_mode == PRESET_HOLIDAY_HOME:
-            mode = "holiday_sat"
-        elif preset_mode == PRESET_HOLIDAY_AWAY:
-            mode = "holiday"
-
-        if mode is None:
-            return
-
-        self._device["mode"] = mode  # Update current copy of device data
-        self._ally.set_mode(self._device_id, mode)
-        self._ally.set_temperature(self._device_id, self.get_setpoint_for_current_mode())
-
-        # Update UI
-        self.schedule_update_ha_state()
-
-    @property
-    def hvac_action(self):
-        """Return the current running hvac operation if supported.
-        Need to be one of HVACAction.*
-        """
-        # 1. Use output_status if it exists (most accurate)
-        if "output_status" in self._device:
-            return (
-                HVACAction.HEATING
-                if self._device["output_status"]
-                else HVACAction.IDLE
-            )
-
-        # 2. Use valveOpening if it exists (Icon RT etc.)
-        if "valveOpening" in self._device:
-            return (
-                HVACAction.HEATING
-                if self._device["valveOpening"] > 0
-                else HVACAction.IDLE
-            )
-
-        # 3. Fallback to work_state (older firmware)
-        if "work_state" in self._device:
-            return (
-                HVACAction.HEATING
-                if self._device["work_state"] in ("Heat", "heat_active")
-                else HVACAction.IDLE
-            )
-
-    @property
-    def temperature_unit(self):
-        """Return the unit of measurement used by the platform."""
-        return UnitOfTemperature.CELSIUS
-
-    @property
-    def target_temperature_step(self):
-        """Return the supported step of target temperature."""
-        return self._heat_step
-
-    @property
-    def target_temperature(self):
-        """Return the temperature we try to reach."""
-        return self.get_setpoint_for_current_mode()
-
-    def set_temperature(self, **kwargs):
-        """Set new target temperature."""
-        if ATTR_TEMPERATURE in kwargs:
-            temperature = kwargs.get(ATTR_TEMPERATURE)
-
-        if self._fallback_to_temp_set:
-            setpoint_code = "temp_set"
-        else:
-            if ATTR_PRESET_MODE in kwargs:
-                setpoint_code = self.get_setpoint_code_for_mode(
-                    kwargs.get(ATTR_PRESET_MODE)
-                )  # Preset_mode sent from action
-            elif ATTR_HVAC_MODE in kwargs:
-                value = kwargs.get(ATTR_HVAC_MODE)  # HVAC_mode sent from action
-                if value == HVACMode.AUTO:
-                    setpoint_code = self.get_setpoint_code_for_mode("at_home")
-                if value == HVACMode.HEAT:
-                    setpoint_code = self.get_setpoint_code_for_mode("manual")
-            else:
-                setpoint_code = self.get_setpoint_code_for_mode(
-                    self._device["mode"]
-                )  # Current preset_mode
-
-        changed = False
-        if temperature is not None and setpoint_code is not None:
-            self._device[setpoint_code] = (
-                temperature  # Update temperature in current copy
-            )
-            self._ally.set_temperature(self._device_id, temperature, setpoint_code)
-            self._ally.set_temperature(self._device_id, temperature)
-            changed = True
-
-        # Update UI
-        if changed:
-            self.schedule_update_ha_state()
-
-    async def set_preset_temperature(self, **kwargs):
-        """Service call to set new target temperature."""
-        await self.hass.async_add_executor_job(
-            ft.partial(self.set_temperature, **kwargs)
-        )
-
-    def set_window_state_open(self, **kwargs):
-        """Tells thermostat that a window is open, as alternative to it detecting it itself"""
-        if "window_open" in kwargs:
-            bopen: bool = kwargs.get("window_open")
-            value = "open" if bopen else "close"
-
-            _LOGGER.debug("set_window_state_open: %s", value)
-            self._ally.send_commands(
-                self._device_id, [("window_state_info", value)], False
-            )
-
-    def set_external_temperature(self, **kwargs):
-        """Writes an externally measured temperature to the thermostat, similar to a room sensor"""
-        temp = None
-        if "temperature" in kwargs:
-            temp = kwargs.get("temperature")
-
-        temp_10 = -800
-        temp_100 = -8000
-        if isinstance(temp, float):
-            temp_10 = int(round(temp * 10, 0))
-            temp_100 = int(round(temp * 100, 0))
-
-        prev_ext_temp = (
-            -800
-            if ("external_sensor_temperature" not in self._device)
-            else int(self._device["external_sensor_temperature"] * 10)
-        )
-
-        # Room Sensor Mode (allows Covered Radiators), as opposed to Auto Offset Mode (for Exposed Radiators)
-        room_sensor_mode = (
-            True
-            if ("radiator_covered" not in self._device)
-            else self._device["radiator_covered"]
-        )
-
-        most_frequent_update = (5 * 60) if (room_sensor_mode) else (30 * 60)
-
-        if self._ext_temp_last_update is not None:
-            _LOGGER.debug(
-                "Time delta: %s seconds, Prev: %d, Set %d, room_sensor_mode: %d, most_frequent_update: %d seconds",
-                round(
-                    (datetime.utcnow() - self._ext_temp_last_update).total_seconds(), 1
-                ),
-                prev_ext_temp,
-                temp_10,
-                room_sensor_mode,
-                most_frequent_update,
-            )
-
-        # Limit updates almost as recommended in the guide: https://assets.danfoss.com/documents/193613/AM375549618098en-000102.pdf
-        if (
-            self._ext_temp_last_update is None
-            or (datetime.utcnow() - self._ext_temp_last_update).total_seconds()
-            >= most_frequent_update
-            or prev_ext_temp != temp_10
-        ):
-            if temp_10 != -800:
-                _LOGGER.debug("Set external temperature: %s", temp)
-            else:
-                _LOGGER.debug("Disable external temperature")
-            self._ext_temp_last_update = datetime.utcnow()
-            self._ally.send_commands(
-                self._device_id,
-                [
-                    ("ext_measured_rs", temp_100),
-                    ("sensor_avg_temp", temp_10),
-                ],
-                False,
-            )
-            # Update local copy and UI
-            self._device["external_sensor_temperature"] = temp_10 / 10
-            self._device["ext_measured_rs"] = temp_100 / 100
-            self.schedule_update_ha_state()
-        else:
-            _LOGGER.debug("Skip setting external temperature")
-
-    @property
-    def available(self):
-        """Return if the device is available."""
-        return self._device["online"]
-
-    @property
-    def min_temp(self):
-        """Return the minimum temperature."""
-        return self._heat_min_temp
-
-    @property
-    def max_temp(self):
-        """Return the maximum temperature."""
-        return self._heat_max_temp
-
-    @callback
-    def _async_update_data(self):
-        """Load data."""
-        _LOGGER.debug("Loading new climate data for device %s", self._device_id)
-        self._device = self._ally.devices[self._device_id]
-
-    @callback
-    def _async_update_callback(self):
-        """Load data and update state."""
-        self._async_update_data()
-        self.schedule_update_ha_state()
-
-    def set_hvac_mode(self, hvac_mode):
-        """Set new target hvac mode."""
-
-        _LOGGER.debug("Setting hvac mode to %s", hvac_mode)
-
-        if hvac_mode == HVACMode.AUTO:
-            mode = "at_home"  # We have to choose either at_home or leaving_home
-        elif hvac_mode == HVACMode.HEAT:
-            mode = "manual"
-
-        if mode is None:
-            return
-
-        self._device["mode"] = mode  # Update current copy of device data
-        self._ally.set_mode(self._device_id, mode)
-
-        # Update UI
-        self.schedule_update_ha_state()
-
-    def get_setpoint_code_for_mode(self, mode, for_writing=True):
-        setpoint_code = None
-        if (
-            for_writing == False
-            and "SetpointChangeSource" in self._device
-            and bool(self._device["SetpointChangeSource"] == "Manual")
-        ):
-            # Temperature setpoint is overridden locally at the thermostate
-            setpoint_code = "manual_mode_fast"
-        elif mode == "at_home" or mode == "home":
-            setpoint_code = "at_home_setting"
-        elif mode == "leaving_home" or mode == "away":
-            setpoint_code = "leaving_home_setting"
-        elif mode == "pause":
-            setpoint_code = "pause_setting"
-        elif mode == "manual":
-            setpoint_code = "manual_mode_fast"
-        elif mode == "holiday":
-            setpoint_code = "holiday_setting"
-        elif mode == "holiday_sat":
-            setpoint_code = "at_home_setting"
-        return setpoint_code
-
-    def get_setpoint_for_current_mode(self):
-        setpoint = None
-
-        if self._fallback_to_temp_set:
-            setpoint = self._device["temp_set"]
-        elif "mode" in self._device:
-            setpoint_code = self.get_setpoint_code_for_mode(self._device["mode"], False)
-
-            if setpoint_code is not None and setpoint_code in self._device:
-                setpoint = self._device[setpoint_code]
-
-        return setpoint
-
-
-class IconClimate(AllyClimate):
-    """Representation of a Danfoss Icon climate entity."""
-
-    def __init__(
-        self,
-        ally,
-        name,
-        device_id,
-        model,
-        heat_min_temp,
-        heat_max_temp,
-        heat_step,
-        supported_hvac_modes,
-        support_flags,
-    ):
-        """Initialize Danfoss Icon climate entity."""
-        super().__init__(
-            ally,
-            name,
-            device_id,
-            model,
-            heat_min_temp,
-            heat_max_temp,
-            heat_step,
-            supported_hvac_modes,
-            support_flags,
-        )
-
-    @property
-    def hvac_mode(self):
-        """Return hvac operation ie. heat, cool mode.
-        Need to be one of HVACMode.
-        """
-        if "mode" in self._device:
-            if (
-                self._device["mode"] == "at_home"
-                or self._device["mode"] == "leaving_home"
-                or self._device["mode"] == "holiday_sat"
-                or self._device["mode"] == "holiday"
-                or self._device["mode"] == "pause"
-            ):
-                return HVACMode.AUTO
-            elif (
-                self._device["work_state"] == "Heat"
-                or self._device["work_state"] == "heat_active"
-            ):
-                if self._device["manual_mode_fast"] == self._device["lower_temp"]:
-                    return HVACMode.OFF
-                else:
-                    return HVACMode.HEAT
-            elif (
-                self._device["work_state"] == "Cool"
-                or self._device["work_state"] == "cool_active"
-            ):
-                if self._device["manual_mode_fast"] == self._device["upper_temp"]:
-                    return HVACMode.OFF
-                else:
-                    return HVACMode.COOL
-
-    @callback
-    def _async_update_callback(self):
-        """Load data and update state."""
-        self._async_update_data()
-        self.async_write_ha_state()
-
-    def set_hvac_mode(self, hvac_mode):
-        """Set new target hvac mode."""
-
-        _LOGGER.debug("Setting hvac mode to %s", hvac_mode)
-
-        if hvac_mode == HVACMode.AUTO:
-            mode = "at_home"  # We have to choose either at_home or leaving_home
-            manual_set = self._device["at_home_setting"]
-        elif hvac_mode == HVACMode.HEAT:
-            mode = "manual"
-            manual_set = self._device["leaving_home_setting"]
-        elif hvac_mode == HVACMode.COOL:
-            mode = "manual"
-            manual_set = self._device["at_home_setting"]
-        elif hvac_mode == HVACMode.OFF:
-            mode = "manual"
-            if (
-                self._device["work_state"] == "heat_active"
-                or self._device["work_state"] == "Heat"
-            ):
-                manual_set = self._device["lower_temp"]
-            elif (
-                self._device["work_state"] == "cool_active"
-                or self._device["work_state"] == "Cool"
-            ):
-                manual_set = self._device["upper_temp"]
-
-        if mode is None:
-            return
-
-        self._device["mode"] = mode  # Update current copy of device data
-        self._device["manual_mode_fast"] = manual_set
-        self._ally.set_mode(self._device_id, mode)
-        self._ally.set_temperature(self._device_id, manual_set)
-
-        # Update UI
-        self.schedule_update_ha_state()
-
-    @property
-    def hvac_action(self):
-        """Return the current running hvac operation if supported.
-        Need to be one of HVACAction.*
-        """
-        if "output_status" in self._device:
-            if self._device["output_status"] == True:
-                if (
-                    self._device["work_state"] == "Heat"
-                    or self._device["work_state"] == "heat_active"
-                ):
-                    return HVACAction.HEATING
-                elif (
-                    self._device["work_state"] == "Cool"
-                    or self._device["work_state"] == "cool_active"
-                ):
-                    return HVACAction.COOLING
-            elif self._device["output_status"] == False:
-                return HVACAction.IDLE
+SERVICE_WRITE_LIMIT_ROOM_SENSOR = timedelta(minutes=5)
+SERVICE_WRITE_LIMIT_OFFSET_SENSOR = timedelta(minutes=30)
+
+PRESET_TO_MODE = {
+    PRESET_HOME: "at_home",
+    PRESET_AWAY: "leaving_home",
+    PRESET_PAUSE: "pause",
+    PRESET_MANUAL: "manual",
+    PRESET_HOLIDAY_HOME: "holiday_sat",
+    PRESET_HOLIDAY_AWAY: "holiday",
+}
+
+MODE_TO_PRESET = {value: key for key, value in PRESET_TO_MODE.items()}
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
-):
-    """Set up the Danfoss Ally climate platform."""
-
+    hass: HomeAssistant,
+    entry: DanfossConfigEntry,
+    async_add_entities,
+) -> None:
+    """Set up Danfoss Ally climate entities."""
     platform = entity_platform.current_platform.get()
     platform.async_register_entity_service(
         "set_preset_temperature",
@@ -616,96 +61,396 @@ async def async_setup_entry(
             vol.Required("temperature"): vol.Coerce(float),
             vol.Optional("preset_mode"): str,
         },
-        "set_preset_temperature",
-        [ClimateEntityFeature.TARGET_TEMPERATURE],
+        "async_set_preset_temperature",
     )
     platform.async_register_entity_service(
         "set_window_state_open",
         {vol.Required("window_open"): cv.boolean},
-        "set_window_state_open",
-        [8192],
+        "async_set_window_state_open",
     )
     platform.async_register_entity_service(
         "set_external_temperature",
-        {
-            vol.Optional("temperature"): vol.Any(vol.Coerce(float), None, str),
-        },
-        "set_external_temperature",
-        [8192],
+        {vol.Optional("temperature"): vol.Any(vol.Coerce(float), None, str)},
+        "async_set_external_temperature",
     )
 
-    ally: AllyConnector = hass.data[DOMAIN][entry.entry_id][DATA]
-    entities = await hass.async_add_executor_job(_generate_entities, ally)
-    if entities:
-        async_add_entities(entities, True)
+    coordinator = entry.runtime_data.coordinator
+    async_add_entities(
+        DanfossAllyClimate(coordinator, device_id)
+        for device_id, device in coordinator.data.items()
+        if device.get("isThermostat")
+    )
 
 
-def _generate_entities(ally: AllyConnector):
-    """Create all climate entities."""
-    _LOGGER.debug("Setting up Danfoss Ally climate entities")
-    entities = []
-    for device in ally.devices:
-        if ally.devices[device]["isThermostat"]:
-            _LOGGER.debug("Found climate entity for %s", ally.devices[device]["name"])
-            entity = create_climate_entity(
-                ally,
-                ally.devices[device]["name"],
-                device,
-                ally.devices[device]["model"],
-            )
-            if entity:
-                entities.append(entity)
-    return entities
+class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
+    """Representation of a Danfoss Ally thermostat."""
 
-
-def create_climate_entity(ally, name: str, device_id: str, model: str) -> AllyClimate:
-    """Create a Danfoss Ally climate entity."""
-
-    #    support_flags = SUPPORT_TARGET_TEMPERATURE | SUPPORT_PRESET_MODE
-    support_flags = (
+    _attr_has_entity_name = True
+    _attr_translation_key = "thermostat"
+    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_target_temperature_step = 0.5
+    _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
     )
 
-    if model == "Icon RT":
-        supported_hvac_modes = [
-            HVACMode.AUTO,
-            HVACMode.HEAT,
-            HVACMode.COOL,
-            HVACMode.OFF,
+    def __init__(self, coordinator, device_id: str) -> None:
+        """Initialize the climate entity."""
+        super().__init__(coordinator, device_id)
+        self._attr_unique_id = f"climate_{device_id}_ally"
+        self._last_external_temperature_write: datetime | None = None
+
+    @property
+    def name(self) -> None:
+        """Use the device name as the primary entity name."""
+        return None
+
+    @property
+    def hvac_modes(self) -> list[HVACMode]:
+        """Return supported HVAC modes."""
+        if self.device.get("model") == "Icon RT":
+            return [HVACMode.AUTO, HVACMode.HEAT, HVACMode.COOL, HVACMode.OFF]
+        return [HVACMode.AUTO, HVACMode.HEAT]
+
+    @property
+    def preset_modes(self) -> list[str]:
+        """Return supported preset modes."""
+        return [
+            PRESET_HOME,
+            PRESET_AWAY,
+            PRESET_PAUSE,
+            PRESET_MANUAL,
+            PRESET_HOLIDAY_HOME,
+            PRESET_HOLIDAY_AWAY,
         ]
-    else:
-        supported_hvac_modes = [HVACMode.AUTO, HVACMode.HEAT]
 
-    heat_min_temp = 4.5
-    heat_max_temp = 35.0
-    heat_step = 0.5
+    @property
+    def current_temperature(self) -> float | None:
+        """Return the current room temperature."""
+        if (
+            self.device_value("radiator_covered", default=False)
+            and self.device_value("external_sensor_temperature") is not None
+        ):
+            return self.device_value("external_sensor_temperature")
 
-    if "Icon" in model:
-        _LOGGER.debug("Adding Icon device")
+        return self.device_value("temperature", default=self.target_temperature)
 
-        entity = IconClimate(
-            ally,
-            name,
-            device_id,
-            model,
-            heat_min_temp,
-            heat_max_temp,
-            heat_step,
-            supported_hvac_modes,
-            support_flags,
+    @property
+    def target_temperature(self) -> float | None:
+        """Return the active target temperature."""
+        return self._get_setpoint_for_mode(self.device_value("mode"))
+
+    @property
+    def min_temp(self) -> float:
+        """Return the minimum supported setpoint."""
+        return float(self.device_value("lower_temp", default=4.5))
+
+    @property
+    def max_temp(self) -> float:
+        """Return the maximum supported setpoint."""
+        return float(self.device_value("upper_temp", default=35.0))
+
+    @property
+    def hvac_mode(self) -> HVACMode | None:
+        """Return the current HVAC mode."""
+        mode = self.device_value("mode")
+        work_state = self.device_value("work_state")
+
+        if self._is_icon_device:
+            if mode in {"at_home", "leaving_home", "holiday_sat", "holiday", "pause"}:
+                return HVACMode.AUTO
+            if work_state in {"Heat", "heat_active"}:
+                if self.device_value("manual_mode_fast") == self.device_value(
+                    "lower_temp"
+                ):
+                    return HVACMode.OFF
+                return HVACMode.HEAT
+            if work_state in {"Cool", "cool_active"}:
+                if self.device_value("manual_mode_fast") == self.device_value(
+                    "upper_temp"
+                ):
+                    return HVACMode.OFF
+                return HVACMode.COOL
+            return HVACMode.AUTO
+
+        if mode in {"at_home", "leaving_home", "holiday_sat"}:
+            return HVACMode.AUTO
+        if mode in {"manual", "pause", "holiday"}:
+            return HVACMode.HEAT
+        return None
+
+    @property
+    def hvac_action(self) -> HVACAction | None:
+        """Return the active HVAC action."""
+        output_status = self.device_value("output_status")
+        work_state = self.device_value("work_state")
+        valve_opening = self.device_value("valve_opening", "valveOpening")
+
+        if output_status is not None:
+            if not output_status:
+                return HVACAction.IDLE
+            if work_state in {"Cool", "cool_active"}:
+                return HVACAction.COOLING
+            return HVACAction.HEATING
+
+        if valve_opening is not None:
+            return HVACAction.HEATING if float(valve_opening) > 0 else HVACAction.IDLE
+
+        if work_state in {"Heat", "heat_active"}:
+            return HVACAction.HEATING
+        if work_state in {"Cool", "cool_active"}:
+            return HVACAction.COOLING
+        if work_state in {"NoHeat", "idle"}:
+            return HVACAction.IDLE
+        return None
+
+    @property
+    def preset_mode(self) -> str | None:
+        """Return the active preset mode."""
+        return MODE_TO_PRESET.get(self.device_value("mode"))
+
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
+        """Set a new HVAC mode."""
+        optimistic_updates: dict[str, Any]
+        manual_set: float | None = None
+
+        if self._is_icon_device:
+            work_state = self.device_value("work_state")
+            if hvac_mode == HVACMode.AUTO:
+                mode = "at_home"
+                manual_set = self.device_value("at_home_setting")
+            elif hvac_mode == HVACMode.HEAT:
+                mode = "manual"
+                manual_set = self.device_value("leaving_home_setting")
+            elif hvac_mode == HVACMode.COOL:
+                mode = "manual"
+                manual_set = self.device_value("at_home_setting")
+            elif hvac_mode == HVACMode.OFF:
+                mode = "manual"
+                if work_state in {"Cool", "cool_active"}:
+                    manual_set = self.device_value("upper_temp")
+                else:
+                    manual_set = self.device_value("lower_temp")
+            else:
+                raise ValueError(f"Unsupported HVAC mode: {hvac_mode}")
+
+            optimistic_updates = {"mode": mode}
+            if manual_set is not None:
+                optimistic_updates["manual_mode_fast"] = manual_set
+            await self.coordinator.async_set_mode(
+                self._device_id,
+                mode,
+                optimistic_updates=optimistic_updates,
+            )
+            if manual_set is not None:
+                await self.coordinator.async_set_temperature(
+                    self._device_id,
+                    manual_set,
+                    optimistic_updates={"manual_mode_fast": manual_set},
+                )
+            return
+
+        if hvac_mode == HVACMode.AUTO:
+            mode = "at_home"
+        elif hvac_mode == HVACMode.HEAT:
+            mode = "manual"
+        else:
+            raise ValueError(f"Unsupported HVAC mode: {hvac_mode}")
+
+        await self.coordinator.async_set_mode(
+            self._device_id,
+            mode,
+            optimistic_updates={"mode": mode},
         )
-    else:
-        _LOGGER.debug("Adding Ally device")
 
-        entity = AllyClimate(
-            ally,
-            name,
-            device_id,
-            model,
-            heat_min_temp,
-            heat_max_temp,
-            heat_step,
-            supported_hvac_modes,
-            support_flags | 8192,
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set a new preset mode."""
+        normalized_preset = self._normalize_preset_mode(preset_mode)
+        mode = PRESET_TO_MODE[normalized_preset]
+        await self.coordinator.async_set_mode(
+            self._device_id,
+            mode,
+            optimistic_updates={"mode": mode},
         )
-    return entity
+
+        target = self._get_setpoint_for_mode(mode)
+        if target is not None and "manual_mode_fast" in self.device:
+            await self.coordinator.async_set_temperature(
+                self._device_id,
+                target,
+                optimistic_updates={"manual_mode_fast": target},
+            )
+
+    async def async_set_temperature(self, **kwargs: Any) -> None:
+        """Set a new target temperature."""
+        if ATTR_TEMPERATURE not in kwargs:
+            return
+
+        temperature = float(kwargs[ATTR_TEMPERATURE])
+
+        # Treat direct climate temperature writes as a manual override so the
+        # thermostat does not continue running its internal schedule.
+        if (
+            ATTR_PRESET_MODE not in kwargs
+            and ATTR_HVAC_MODE not in kwargs
+            and not self._uses_temp_set_fallback
+            and "manual_mode_fast" in self.device
+        ):
+            if self.device_value("mode") != "manual":
+                await self.coordinator.async_set_mode(
+                    self._device_id,
+                    "manual",
+                    optimistic_updates={"mode": "manual"},
+                )
+
+            await self.coordinator.async_set_temperature(
+                self._device_id,
+                temperature,
+                optimistic_updates={"manual_mode_fast": temperature},
+            )
+            return
+
+        setpoint_code = self._get_target_setpoint_code(kwargs)
+        optimistic_updates = {setpoint_code: temperature}
+
+        await self.coordinator.async_set_temperature(
+            self._device_id,
+            temperature,
+            code=setpoint_code,
+            optimistic_updates=optimistic_updates,
+        )
+
+        if not self._uses_temp_set_fallback and "manual_mode_fast" in self.device:
+            await self.coordinator.async_set_temperature(
+                self._device_id,
+                temperature,
+                optimistic_updates={"manual_mode_fast": temperature},
+            )
+
+    async def async_set_preset_temperature(self, **kwargs: Any) -> None:
+        """Handle the custom preset temperature service."""
+        await self.async_set_temperature(**kwargs)
+
+    async def async_set_window_state_open(self, **kwargs: Any) -> None:
+        """Tell the thermostat whether a window is open."""
+        value = "open" if kwargs["window_open"] else "close"
+        await self.coordinator.async_send_commands(
+            self._device_id,
+            [("window_state_info", value)],
+        )
+
+    async def async_set_external_temperature(self, **kwargs: Any) -> None:
+        """Send an external temperature measurement to the thermostat."""
+        raw_temperature = kwargs.get("temperature")
+        temperature = (
+            None
+            if raw_temperature in (None, "", "unknown", "unavailable")
+            else float(raw_temperature)
+        )
+
+        temp_10 = -800 if temperature is None else int(round(temperature * 10, 0))
+        temp_100 = -8000 if temperature is None else int(round(temperature * 100, 0))
+        previous_ext_temp = int(
+            round(self.device_value("external_sensor_temperature", default=-80.0) * 10)
+        )
+
+        room_sensor_mode = bool(self.device_value("radiator_covered", default=True))
+        min_update_delta = (
+            SERVICE_WRITE_LIMIT_ROOM_SENSOR
+            if room_sensor_mode
+            else SERVICE_WRITE_LIMIT_OFFSET_SENSOR
+        )
+
+        now = datetime.now(UTC)
+        if (
+            self._last_external_temperature_write is not None
+            and now - self._last_external_temperature_write < min_update_delta
+            and previous_ext_temp == temp_10
+        ):
+            _LOGGER.debug("Skipping external temperature write for %s", self._device_id)
+            return
+
+        self._last_external_temperature_write = now
+        await self.coordinator.async_send_commands(
+            self._device_id,
+            [
+                ("ext_measured_rs", temp_100),
+                ("sensor_avg_temp", temp_10),
+            ],
+            optimistic_updates={
+                "ext_measured_rs": temp_100 / 100,
+                "external_sensor_temperature": temp_10 / 10,
+            },
+        )
+
+    @property
+    def _is_icon_device(self) -> bool:
+        """Return whether the entity represents an Icon device."""
+        return "Icon" in str(self.device.get("model", ""))
+
+    @property
+    def _uses_temp_set_fallback(self) -> bool:
+        """Return whether the thermostat only exposes a single temp_set field."""
+        return "temp_set" in self.device and not {
+            "manual_mode_fast",
+            "at_home_setting",
+            "leaving_home_setting",
+            "pause_setting",
+            "holiday_setting",
+        }.issubset(self.device)
+
+    def _normalize_preset_mode(self, preset_mode: str) -> str:
+        """Normalize legacy preset aliases to the new tokens."""
+        preset_mode = LEGACY_PRESET_ALIASES.get(preset_mode, preset_mode)
+        if preset_mode not in PRESET_TO_MODE:
+            raise ValueError(f"Unsupported preset mode: {preset_mode}")
+        return preset_mode
+
+    def _get_target_setpoint_code(self, kwargs: dict[str, Any]) -> str:
+        """Resolve which Danfoss setpoint code should be written."""
+        if self._uses_temp_set_fallback:
+            return "temp_set"
+
+        if ATTR_PRESET_MODE in kwargs:
+            return self._get_setpoint_code_for_mode(
+                PRESET_TO_MODE[self._normalize_preset_mode(kwargs[ATTR_PRESET_MODE])]
+            )
+
+        if kwargs.get(ATTR_HVAC_MODE) == HVACMode.AUTO:
+            return self._get_setpoint_code_for_mode("at_home")
+        if kwargs.get(ATTR_HVAC_MODE) == HVACMode.HEAT:
+            return self._get_setpoint_code_for_mode("manual")
+
+        return self._get_setpoint_code_for_mode(self.device_value("mode"))
+
+    def _get_setpoint_code_for_mode(
+        self, mode: str | None, for_writing: bool = True
+    ) -> str:
+        """Map a Danfoss mode to a Danfoss setpoint field."""
+        if (
+            not for_writing
+            and self.device_value("setpointchangesource", "SetpointChangeSource")
+            == "Manual"
+        ):
+            return "manual_mode_fast"
+
+        if mode in {"at_home", "home"}:
+            return "at_home_setting"
+        if mode in {"leaving_home", "away"}:
+            return "leaving_home_setting"
+        if mode == "pause":
+            return "pause_setting"
+        if mode == "manual":
+            return "manual_mode_fast"
+        if mode == "holiday":
+            return "holiday_setting"
+        if mode == "holiday_sat":
+            return "at_home_setting"
+        return "manual_mode_fast"
+
+    def _get_setpoint_for_mode(self, mode: str | None) -> float | None:
+        """Return the setpoint for the given mode."""
+        if self._uses_temp_set_fallback:
+            return self.device_value("temp_set")
+
+        setpoint_code = self._get_setpoint_code_for_mode(mode, for_writing=False)
+        return self.device_value(setpoint_code)
