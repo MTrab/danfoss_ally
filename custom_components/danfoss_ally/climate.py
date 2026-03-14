@@ -229,6 +229,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
 
         self._device["mode"] = mode  # Update current copy of device data
         self._ally.set_mode(self._device_id, mode)
+        self._ally.set_temperature(self._device_id, self.get_setpoint_for_current_mode())
 
         # Update UI
         self.schedule_update_ha_state()
@@ -288,6 +289,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
                 temperature  # Update temperature in current copy
             )
             self._ally.set_temperature(self._device_id, temperature, setpoint_code)
+            self._ally.set_temperature(self._device_id, temperature)
             changed = True
 
         # Update UI
