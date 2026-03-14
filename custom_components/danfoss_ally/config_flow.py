@@ -1,71 +1,137 @@
-"""Config flow for Tado integration."""
+"""Config flow for Danfoss Ally."""
 
+from __future__ import annotations
+
+from collections.abc import Mapping
 import logging
+from typing import Any
 
-import requests.exceptions
 import voluptuous as vol
-from homeassistant import config_entries, core, exceptions
+from homeassistant import config_entries
 from homeassistant.core import callback
-from pydanfossally import DanfossAlly
+from homeassistant.data_entry_flow import FlowResult
+from homeassistant.exceptions import HomeAssistantError
+from pydanfossally import DanfossAlly, exceptions
 
-from .const import DOMAIN  # pylint:disable=unused-import
-from .const import CONF_KEY, CONF_SECRET, UNIQUE_ID
+from .const import API_TIMEOUT, CONF_KEY, CONF_SECRET, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema({vol.Required(CONF_KEY): str, vol.Required(CONF_SECRET): str})
+STEP_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_KEY): str,
+        vol.Required(CONF_SECRET): str,
+    }
+)
 
 
-async def validate_input(hass: core.HomeAssistant, data):
-    """Validate the user input allows us to connect.
+async def validate_input(data: Mapping[str, str]) -> dict[str, str]:
+    """Validate credentials against the Danfoss Ally API."""
+    client = DanfossAlly(timeout=API_TIMEOUT)
+    try:
+        authorized = await client.initialize(data[CONF_KEY], data[CONF_SECRET])
+    except (TimeoutError, ConnectionError, exceptions.APIError) as err:
+        raise CannotConnect from err
+    except exceptions.UnexpectedError as err:
+        raise CannotConnect from err
+    finally:
+        await client.aclose()
 
-    Data has the keys from DATA_SCHEMA with values provided by the user.
-    """
-
-    ally = DanfossAlly()
-    auth = await hass.async_add_executor_job(
-        ally.initialize, data[CONF_KEY], data[CONF_SECRET]
-    )
-    if not auth:
+    if not authorized:
         raise InvalidAuth
 
-    return {"title": f"Danfoss Ally"}
+    return {"title": "Danfoss Ally"}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Danfoss Ally."""
+    """Handle Danfoss Ally config and re-auth flows."""
 
-    VERSION = 1
+    VERSION = 2
 
-    CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the initial setup step."""
+        return await self._async_handle_credentials_step("user", user_input)
 
-    async def async_step_user(self, user_input=None):
-        """Handle the initial step."""
-        errors = {}
+    async def async_step_reauth(self, _: dict[str, Any]) -> FlowResult:
+        """Begin re-authentication."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> FlowResult:
+        """Handle credential updates for re-authentication."""
+        return await self._async_handle_credentials_step("reauth_confirm", user_input)
+
+    async def async_step_reconfigure(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> FlowResult:
+        """Handle credential updates for reconfiguration."""
+        return await self._async_handle_credentials_step("reconfigure", user_input)
+
+    async def _async_handle_credentials_step(
+        self,
+        step_id: str,
+        user_input: dict[str, Any] | None,
+    ) -> FlowResult:
+        """Validate credentials and create/update the entry."""
+        errors: dict[str, str] = {}
+
         if user_input is not None:
             try:
-                validated = await validate_input(self.hass, user_input)
+                validated = await validate_input(user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
             except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
+                _LOGGER.exception("Unexpected exception during config flow")
                 errors["base"] = "unknown"
+            else:
+                if step_id == "user":
+                    duplicate_abort = self._async_abort_if_duplicate_key(
+                        user_input[CONF_KEY]
+                    )
+                    if duplicate_abort is not None:
+                        return duplicate_abort
+                    return self.async_create_entry(
+                        title=validated["title"], data=user_input
+                    )
 
-            if "base" not in errors:
-                return self.async_create_entry(
-                    title=validated["title"], data=user_input
+                entry = (
+                    self._get_reauth_entry()
+                    if step_id == "reauth_confirm"
+                    else self._get_reconfigure_entry()
+                )
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data_updates=user_input,
+                    reason=(
+                        "reauth_successful"
+                        if step_id == "reauth_confirm"
+                        else "reconfigure_successful"
+                    ),
                 )
 
         return self.async_show_form(
-            step_id="user", data_schema=DATA_SCHEMA, errors=errors
+            step_id=step_id, data_schema=STEP_SCHEMA, errors=errors
         )
 
+    @callback
+    def _async_abort_if_duplicate_key(self, key: str) -> FlowResult | None:
+        """Abort when the same API key is already configured."""
+        for entry in self._async_current_entries():
+            if entry.data.get(CONF_KEY) == key:
+                return self.async_abort(reason="already_configured")
+        return None
 
-class CannotConnect(exceptions.HomeAssistantError):
+
+class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
 
 
-class InvalidAuth(exceptions.HomeAssistantError):
+class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""

@@ -9,7 +9,6 @@ import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.components.climate import ATTR_PRESET_MODE, ATTR_PRESET_MODES
 from homeassistant.components.climate import DOMAIN as CLIMATE_DOMAIN
-from homeassistant.components.climate import SERVICE_SET_TEMPERATURE
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     ATTR_TEMPERATURE,
@@ -21,9 +20,9 @@ from homeassistant.const import (
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry
-from homeassistant.helpers.entity import get_capability, get_supported_features
+from homeassistant.helpers.entity import get_capability
 
-from .const import ACTION_TYPE_SET_PRESET_TEMPERATURE, ATTR_SETPOINT, DOMAIN
+from .const import ACTION_TYPE_SET_PRESET_TEMPERATURE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,8 +51,6 @@ async def async_get_actions(
     for entry in entity_registry.async_entries_for_device(registry, device_id):
         if entry.domain != CLIMATE_DOMAIN:
             continue
-
-        supported_features = get_supported_features(hass, entry.entity_id)
 
         base_action = {
             CONF_DEVICE_ID: device_id,

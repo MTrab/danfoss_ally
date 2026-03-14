@@ -1,9 +1,9 @@
-"""Support for Ally sensors."""
+"""Sensor support for Danfoss Ally."""
 
 from __future__ import annotations
 
-import logging
-from enum import IntEnum
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -11,190 +11,145 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfTemperature
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
-from pydanfossally import DanfossAlly
 
-from .const import DATA, DOMAIN, SIGNAL_ALLY_UPDATE_RECEIVED
-from .entity import AllyDeviceEntity
-
-_LOGGER = logging.getLogger(__name__)
+from .coordinator import DanfossConfigEntry
+from .entity import DanfossAllyEntity
 
 
-class AllySensorType(IntEnum):
-    """Supported sensor types."""
+@dataclass(frozen=True, kw_only=True)
+class DanfossAllySensorDescription(SensorEntityDescription):
+    """Describe a Danfoss Ally sensor entity."""
 
-    TEMPERATURE = 0
-    BATTERY = 1
-    HUMIDITY = 2
-    FLOOR_TEMPERATURE = 3
-    VALVE_OPENING = 4
-    LOAD_ESTIMATE = 5
-    LOAD_ROOM_MEAN = 6
-    EXTERNAL_SENSOR_TEMPERATURE = 7
+    exists_fn: Callable[[dict[str, object]], bool]
+    value_fn: Callable[[dict[str, object]], object]
+    unique_prefix: str
 
 
-SENSORS = [
-    SensorEntityDescription(
-        key=AllySensorType.TEMPERATURE,
+SENSORS: tuple[DanfossAllySensorDescription, ...] = (
+    DanfossAllySensorDescription(
+        key="temperature",
+        translation_key="temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
-        entity_category=None,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
-        name="{} temperature",
+        exists_fn=lambda device: (
+            "temperature" in device or "local_temperature" in device
+        ),
+        value_fn=lambda device: device.get(
+            "local_temperature", device.get("temperature")
+        ),
+        unique_prefix="temperature",
     ),
-    SensorEntityDescription(
-        key=AllySensorType.BATTERY,
+    DanfossAllySensorDescription(
+        key="battery",
+        translation_key="battery",
         device_class=SensorDeviceClass.BATTERY,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        native_unit_of_measurement=PERCENTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
-        name="{} battery",
+        exists_fn=lambda device: "battery" in device,
+        value_fn=lambda device: device["battery"],
+        unique_prefix="battery",
     ),
-    SensorEntityDescription(
-        key=AllySensorType.HUMIDITY,
+    DanfossAllySensorDescription(
+        key="humidity",
+        translation_key="humidity",
         device_class=SensorDeviceClass.HUMIDITY,
-        entity_category=None,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
-        name="{} humidity",
+        exists_fn=lambda device: "humidity" in device,
+        value_fn=lambda device: device["humidity"],
+        unique_prefix="humidity",
     ),
-    SensorEntityDescription(
-        key=AllySensorType.FLOOR_TEMPERATURE,
+    DanfossAllySensorDescription(
+        key="floor_temperature",
+        translation_key="floor_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
-        entity_category=None,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
-        name="{} floor temperature",
+        exists_fn=lambda device: "floor_temperature" in device,
+        value_fn=lambda device: device["floor_temperature"],
+        unique_prefix="floor temperature",
     ),
-    SensorEntityDescription(
-        key=AllySensorType.VALVE_OPENING,
-        entity_category=EntityCategory.DIAGNOSTIC,
+    DanfossAllySensorDescription(
+        key="valve_opening",
+        translation_key="valve_opening",
         native_unit_of_measurement=PERCENTAGE,
-        name="{} valve opening",
-        icon="mdi:pipe-valve",
-    ),
-    SensorEntityDescription(
-        key=AllySensorType.LOAD_ROOM_MEAN,
         entity_category=EntityCategory.DIAGNOSTIC,
-        native_unit_of_measurement="",
-        name="{} load room mean",
+        icon="mdi:pipe-valve",
+        exists_fn=lambda device: "valve_opening" in device or "valveOpening" in device,
+        value_fn=lambda device: device.get("valve_opening", device.get("valveOpening")),
+        unique_prefix="valve opening",
+    ),
+    DanfossAllySensorDescription(
+        key="load_room_mean",
+        translation_key="load_room_mean",
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:progress-star",
         entity_registry_enabled_default=False,
+        exists_fn=lambda device: "load_room_mean" in device,
+        value_fn=lambda device: device["load_room_mean"],
+        unique_prefix="load room mean",
     ),
-    SensorEntityDescription(
-        key=AllySensorType.EXTERNAL_SENSOR_TEMPERATURE,
+    DanfossAllySensorDescription(
+        key="external_sensor_temperature",
+        translation_key="external_sensor_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
-        entity_category=None,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
-        name="{} external sensor temperature",
-        entity_registry_enabled_default=False,
+        exists_fn=lambda device: (
+            "ext_measured_rs" in device or "external_sensor_temperature" in device
+        ),
+        value_fn=lambda device: device.get(
+            "ext_measured_rs", device.get("external_sensor_temperature")
+        ),
+        unique_prefix="external sensor temperature",
     ),
-]
+)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
-):
-    """Set up the Ally binary_sensor platform."""
-    _LOGGER.debug("Setting up Danfoss Ally sensor entities")
-    ally = hass.data[DOMAIN][entry.entry_id][DATA]
-    entities = []
+    hass: HomeAssistant,
+    entry: DanfossConfigEntry,
+    async_add_entities,
+) -> None:
+    """Set up Danfoss Ally sensor entities."""
+    coordinator = entry.runtime_data.coordinator
+    entities: list[DanfossAllySensor] = []
+    for device_id, device in coordinator.data.items():
+        for description in SENSORS:
+            if description.exists_fn(device):
+                entities.append(DanfossAllySensor(coordinator, device_id, description))
 
-    for device in ally.devices:
-        for sensor in SENSORS:
-            sensor_type = AllySensorType(sensor.key).name.lower()
-            if sensor_type in ally.devices[device]:
-                _LOGGER.debug(
-                    "Found %s sensor for %s", sensor_type, ally.devices[device]["name"]
-                )
-                entities.extend(
-                    [
-                        AllySensor(
-                            ally,
-                            ally.devices[device]["name"],
-                            device,
-                            sensor,
-                            ally.devices[device]["model"],
-                        )
-                    ]
-                )
-
-    if entities:
-        async_add_entities(entities, True)
+    async_add_entities(entities)
 
 
-class AllySensor(AllyDeviceEntity, SensorEntity):
-    """Representation of an Ally sensor."""
+class DanfossAllySensor(DanfossAllyEntity, SensorEntity):
+    """Representation of a Danfoss Ally sensor."""
+
+    entity_description: DanfossAllySensorDescription
 
     def __init__(
-        self,
-        ally: DanfossAlly,
-        name,
-        device_id,
-        description: SensorEntityDescription,
-        model=None,
-    ):
-        """Initialize Ally binary_sensor."""
+        self, coordinator, device_id: str, description: DanfossAllySensorDescription
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id)
         self.entity_description = description
-        self._ally = ally
-        self._device = ally.devices[device_id]
-        self._device_id = device_id
-        self._type = AllySensorType(description.key).name.lower()
-        super().__init__(name, device_id, self._type, model)
+        self._attr_translation_key = description.translation_key
+        self._attr_unique_id = f"{description.unique_prefix}_{device_id}_ally"
 
-        _LOGGER.debug("Device_id: %s --- Device: %s", self._device_id, self._device)
+    @property
+    def native_value(self) -> object:
+        """Return the current sensor value."""
+        return self.entity_description.value_fn(self.device)
 
-        self._attr_native_value = None
-        self._attr_extra_state_attributes = None
-        self._attr_name = self.entity_description.name.format(name)
-        self._attr_unique_id = "{}_{}_ally".format(
-            self._type.replace("_", " "), device_id
-        )
-
-    async def async_added_to_hass(self):
-        """Register for sensor updates."""
-
-        self.async_on_remove(
-            async_dispatcher_connect(
-                self.hass,
-                SIGNAL_ALLY_UPDATE_RECEIVED,
-                self._async_update_callback,
-            )
-        )
-
-    @callback
-    def _async_update_callback(self):
-        """Update and write state."""
-        self._async_update_data()
-        self.schedule_update_ha_state()
-
-    @callback
-    def _async_update_data(self):
-        """Load data."""
-        _LOGGER.debug(
-            "Loading new sensor data for Ally Sensor for device %s", self._device_id
-        )
-        self._device = self._ally.devices[self._device_id]
-
-        if (
-            self.entity_description.key == AllySensorType.TEMPERATURE
-            and "local_temperature" in self._device
-        ):
-            self._attr_native_value = self._device["local_temperature"]
-        elif (
-            self.entity_description.key == AllySensorType.EXTERNAL_SENSOR_TEMPERATURE
-            and "ext_measured_rs" in self._device
-            and self._device["ext_measured_rs"] != -80
-        ):
-            self._attr_native_value = self._device["ext_measured_rs"]
-        elif self._type in self._device:
-            self._attr_native_value = self._device[self._type]
-
-        # Make external sensor temperature unavailable if value is -80 (feature disabled value)
-        if self.entity_description.key == AllySensorType.EXTERNAL_SENSOR_TEMPERATURE:
-            self._attr_available = self._attr_native_value != float(-80)
+    @property
+    def available(self) -> bool:
+        """Return whether the sensor should be considered available."""
+        if self.entity_description.key == "external_sensor_temperature":
+            value = self.native_value
+            return super().available and value not in (-80, -80.0)
+        return super().available
