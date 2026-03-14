@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable
 from dataclasses import dataclass
-from typing import Any
 import logging
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -16,6 +17,7 @@ from pydanfossally import DanfossAlly, exceptions
 from .const import DOMAIN, SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
+WRITE_REFRESH_DELAY = 1.0
 
 
 def _format_error(err: BaseException) -> str:
@@ -150,6 +152,8 @@ class DanfossAllyDataUpdateCoordinator(
         if result is False:
             raise HomeAssistantError(error_message)
 
+        # The Danfoss cloud may briefly return stale state immediately after a write.
+        await asyncio.sleep(WRITE_REFRESH_DELAY)
         await self.async_request_refresh()
 
     def _async_apply_optimistic_updates(
