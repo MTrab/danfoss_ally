@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import time
+from unittest.mock import AsyncMock
 
+import pytest
 from custom_components.danfoss_ally.coordinator import (
     DanfossAllyDataUpdateCoordinator,
     PendingWrite,
@@ -155,3 +157,41 @@ def test_is_stale_snapshot_accepts_newer_response_timestamp() -> None:
             }
         }
     )
+
+
+@pytest.mark.asyncio
+async def test_update_data_uses_bulk_fetch_for_first_refresh() -> None:
+    """First refresh should discover devices via the bulk endpoint."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator.client = AsyncMock()
+    coordinator.client.get_devices.return_value = {
+        "device-1": {"mode": "manual", "last_response_time": 100}
+    }
+    coordinator.client.refresh_devices.return_value = {}
+    coordinator.data = None
+    coordinator._pending_writes = {}
+
+    devices = await coordinator._async_update_data()
+
+    assert devices["device-1"]["mode"] == "manual"
+    coordinator.client.get_devices.assert_awaited_once()
+    coordinator.client.refresh_devices.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_data_uses_per_device_refresh_after_initial_load() -> None:
+    """Subsequent refreshes should use per-device reads."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator.client = AsyncMock()
+    coordinator.client.get_devices.return_value = {}
+    coordinator.client.refresh_devices.return_value = {
+        "device-1": {"mode": "manual", "last_response_time": 101}
+    }
+    coordinator.data = {"device-1": {"mode": "manual", "last_response_time": 100}}
+    coordinator._pending_writes = {}
+
+    devices = await coordinator._async_update_data()
+
+    assert devices["device-1"]["last_response_time"] == 101
+    coordinator.client.refresh_devices.assert_awaited_once()
+    coordinator.client.get_devices.assert_not_called()

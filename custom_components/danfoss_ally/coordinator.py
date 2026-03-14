@@ -73,7 +73,10 @@ class DanfossAllyDataUpdateCoordinator(
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         """Fetch the latest device list."""
         try:
-            devices = await self.client.get_devices()
+            if self.data is None:
+                devices = await self.client.get_devices()
+            else:
+                devices = await self.client.refresh_devices()
         except exceptions.UnauthorizedError as err:
             raise ConfigEntryAuthFailed(
                 "Authentication with Danfoss Ally failed"
