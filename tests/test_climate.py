@@ -180,6 +180,22 @@ def test_current_temperature_prefers_external_sensor_when_available() -> None:
     assert entity.current_temperature == 18.5
 
 
+def test_current_temperature_prefers_ext_measured_rs_when_available() -> None:
+    """The raw external sensor value should also override local temperature."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                radiator_covered=False,
+                ext_measured_rs=25.0,
+                temperature=20.7,
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.current_temperature == 25.0
+
+
 def test_hvac_action_uses_valve_opening_before_work_state() -> None:
     """Valve opening should override stale work_state readings."""
     coordinator = FakeCoordinator(
