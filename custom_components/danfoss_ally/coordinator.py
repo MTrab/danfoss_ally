@@ -42,6 +42,7 @@ class PendingWrite:
 
     updates: dict[str, Any]
     expires_at: float
+    baseline_response_time: int | None
 
 
 DanfossConfigEntry = ConfigEntry
@@ -218,9 +219,11 @@ class DanfossAllyDataUpdateCoordinator(
         """Record optimistic updates until the polled state reflects them."""
         existing = self._pending_writes.get(device_id)
         combined_updates = {**(existing.updates if existing else {}), **updates}
+        baseline_response_time = self._get_device_response_time(device_id)
         self._pending_writes[device_id] = PendingWrite(
             updates=combined_updates,
             expires_at=time.monotonic() + PENDING_WRITE_TIMEOUT,
+            baseline_response_time=baseline_response_time,
         )
 
     def _apply_pending_writes(
@@ -243,6 +246,10 @@ class DanfossAllyDataUpdateCoordinator(
                 continue
 
             device = merged_devices[device_id]
+            if not self._has_fresh_device_response(device, pending_write):
+                merged_devices[device_id] = {**device, **pending_write.updates}
+                continue
+
             unresolved_updates: dict[str, Any] = {}
 
             for key, expected_value in pending_write.updates.items():
@@ -259,6 +266,7 @@ class DanfossAllyDataUpdateCoordinator(
             self._pending_writes[device_id] = PendingWrite(
                 updates=unresolved_updates,
                 expires_at=pending_write.expires_at,
+                baseline_response_time=pending_write.baseline_response_time,
             )
 
         return merged_devices
@@ -274,3 +282,46 @@ class DanfossAllyDataUpdateCoordinator(
             return math.isclose(float(actual), float(expected), abs_tol=0.05)
 
         return actual == expected
+
+    def _get_device_response_time(self, device_id: str) -> int | None:
+        """Return the cached response timestamp for one device."""
+        if self.data is None:
+            return None
+
+        return self._coerce_response_time(
+            self.data.get(device_id, {}).get("last_response_time")
+        )
+
+    def _has_fresh_device_response(
+        self,
+        device: dict[str, Any],
+        pending_write: PendingWrite,
+    ) -> bool:
+        """Return whether the latest poll is newer than the write baseline."""
+        if pending_write.baseline_response_time is None:
+            return True
+
+        response_time = self._coerce_response_time(device.get("last_response_time"))
+        if response_time is None:
+            return False
+
+        return response_time > pending_write.baseline_response_time
+
+    def _coerce_response_time(self, value: Any) -> int | None:
+        """Normalize API timestamps so they can be compared safely."""
+        if isinstance(value, bool):
+            return None
+
+        if isinstance(value, int):
+            return value
+
+        if isinstance(value, float):
+            return int(value)
+
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return None
+
+        return None
