@@ -251,7 +251,7 @@ class AllyClimate(AllyDeviceEntity, ClimateEntity):
         if "valveOpening" in self._device:
             return (
                 HVACAction.HEATING
-                if self._device["valveOpening"] > 0
+                if self._device["valveOpening"] > 1
                 else HVACAction.IDLE
             )
 
