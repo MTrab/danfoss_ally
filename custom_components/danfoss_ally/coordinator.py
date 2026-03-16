@@ -28,7 +28,7 @@ RATE_LIMIT_RETRY_AFTER = 900.0
 SERVER_ERROR_RETRY_AFTER = 600.0
 GENERIC_API_RETRY_AFTER = 300.0
 AUTH_FAILED_MESSAGE = (
-    "Authentication failed. Check your API key and secret."
+    "Authentication failed. Check your Consumer Key and Consumer Secret."
 )
 
 

@@ -21,7 +21,7 @@ from .coordinator import (
 
 _LOGGER = logging.getLogger(__name__)
 AUTH_FAILED_MESSAGE = (
-    "Authentication failed. Check your API key and secret."
+    "Authentication failed. Check your Consumer Key and Consumer Secret."
 )
 
 CONFIG_SCHEMA = vol.Schema(

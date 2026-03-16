@@ -21,7 +21,7 @@ This is a custom component for Home Assistant to integrate the Danfoss Ally and 
 
 ## Setup
 
-First of all you need to go and create an api-key and secret
+First of all you need to create a Consumer Key and Consumer Secret
 
 - Navigate to https://developer.danfoss.com
 - Create Danfoss developer account and login _<u><b>NOTE:</b> Use the same email as used in the Danfoss Ally app for pairing your gateway</u>_
@@ -30,10 +30,10 @@ First of all you need to go and create an api-key and secret
 - Make sure to enable Danfoss Ally API
 - Click `Submit`
 - Click on your app (the name you gave it)
-- Save your `Consumer key` and `Consumer secret` - these will be used when adding the integration
+- Save your `Consumer Key` and `Consumer Secret` - these will be used when adding the integration
 - Go to `Home Assistant > Settings > Integrations`
 - Add Danfoss Ally integration _(If it doesn't show, try CTRL+F5 to force a refresh of the page)_
-- Enter API key (`Consumer key`) and secret (`Consumer secret`)
+- Enter your `Consumer Key` and `Consumer Secret`
 
 Voila
 
