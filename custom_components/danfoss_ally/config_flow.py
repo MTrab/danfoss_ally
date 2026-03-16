@@ -25,6 +25,13 @@ STEP_SCHEMA = vol.Schema(
 )
 
 
+def _format_error(err: BaseException | None) -> str:
+    """Return a useful error string even for exceptions without a message."""
+    if err is None:
+        return "UnknownError"
+    return str(err) or err.__class__.__name__
+
+
 async def validate_input(data: Mapping[str, str]) -> dict[str, str]:
     """Validate credentials against the Danfoss Ally API."""
     client = DanfossAlly(timeout=API_TIMEOUT)
@@ -87,6 +94,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Validate credentials and create/update the entry."""
         errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] | None = None
 
         if user_input is not None:
             try:
@@ -103,11 +111,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except UnknownError:
+            except UnknownError as err:
+                _LOGGER.exception("Unexpected API exception during config flow")
                 errors["base"] = "unknown"
-            except Exception:  # pylint: disable=broad-except
+                description_placeholders = {
+                    "error": _format_error(err.__cause__ or err)
+                }
+            except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception during config flow")
                 errors["base"] = "unknown"
+                description_placeholders = {"error": _format_error(err)}
             else:
                 if step_id == "user":
                     duplicate_abort = self._async_abort_if_duplicate_key(
@@ -135,7 +148,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id=step_id, data_schema=STEP_SCHEMA, errors=errors
+            step_id=step_id,
+            data_schema=STEP_SCHEMA,
+            errors=errors,
+            description_placeholders=description_placeholders,
         )
 
     @callback

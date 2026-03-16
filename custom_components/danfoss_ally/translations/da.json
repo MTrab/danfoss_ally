@@ -12,7 +12,7 @@
       "cannot_connect_server_error": "Serverfejl fra Danfoss Ally API'et (HTTP 5xx).",
       "cannot_connect": "Kunne ikke kontakte Danfoss Ally API'et.",
       "invalid_auth": "Godkendelse mislykkedes. Tjek din Consumer Key og Consumer Secret.",
-      "unknown": "Uventet Danfoss Ally-fejl."
+      "unknown": "Uventet fejl: {error}"
     },
     "step": {
       "user": {
