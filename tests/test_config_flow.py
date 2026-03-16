@@ -9,6 +9,9 @@ from pydanfossally import exceptions
 
 from custom_components.danfoss_ally.config_flow import (
     CannotConnect,
+    CannotConnectForbidden,
+    CannotConnectRateLimited,
+    CannotConnectServerError,
     CannotConnectTimeout,
     InvalidAuth,
     UnknownError,
@@ -62,6 +65,54 @@ async def test_validate_input_timeout(monkeypatch) -> None:
     )
 
     with pytest.raises(CannotConnectTimeout):
+        await validate_input({"key": "abc", "secret": "def"})
+
+
+@pytest.mark.asyncio
+async def test_validate_input_forbidden(monkeypatch) -> None:
+    """HTTP 403 should raise a dedicated forbidden error."""
+    client = AsyncMock()
+    client.initialize.side_effect = exceptions.ForbiddenError
+    client.aclose.return_value = None
+
+    monkeypatch.setattr(
+        "custom_components.danfoss_ally.config_flow.DanfossAlly",
+        lambda *args, **kwargs: client,
+    )
+
+    with pytest.raises(CannotConnectForbidden):
+        await validate_input({"key": "abc", "secret": "def"})
+
+
+@pytest.mark.asyncio
+async def test_validate_input_rate_limited(monkeypatch) -> None:
+    """HTTP 429 should raise a dedicated rate limit error."""
+    client = AsyncMock()
+    client.initialize.side_effect = exceptions.RateLimitError
+    client.aclose.return_value = None
+
+    monkeypatch.setattr(
+        "custom_components.danfoss_ally.config_flow.DanfossAlly",
+        lambda *args, **kwargs: client,
+    )
+
+    with pytest.raises(CannotConnectRateLimited):
+        await validate_input({"key": "abc", "secret": "def"})
+
+
+@pytest.mark.asyncio
+async def test_validate_input_server_error(monkeypatch) -> None:
+    """HTTP 5xx should raise a dedicated server-side error."""
+    client = AsyncMock()
+    client.initialize.side_effect = exceptions.InternalServerError
+    client.aclose.return_value = None
+
+    monkeypatch.setattr(
+        "custom_components.danfoss_ally.config_flow.DanfossAlly",
+        lambda *args, **kwargs: client,
+    )
+
+    with pytest.raises(CannotConnectServerError):
         await validate_input({"key": "abc", "secret": "def"})
 
 

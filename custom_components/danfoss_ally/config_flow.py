@@ -32,6 +32,12 @@ async def validate_input(data: Mapping[str, str]) -> dict[str, str]:
         authorized = await client.initialize(data[CONF_KEY], data[CONF_SECRET])
     except TimeoutError as err:
         raise CannotConnectTimeout from err
+    except exceptions.ForbiddenError as err:
+        raise CannotConnectForbidden from err
+    except exceptions.RateLimitError as err:
+        raise CannotConnectRateLimited from err
+    except exceptions.InternalServerError as err:
+        raise CannotConnectServerError from err
     except (ConnectionError, exceptions.APIError) as err:
         raise CannotConnect from err
     except exceptions.UnexpectedError as err:
@@ -87,6 +93,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 validated = await validate_input(user_input)
             except CannotConnectTimeout:
                 errors["base"] = "cannot_connect_timeout"
+            except CannotConnectForbidden:
+                errors["base"] = "cannot_connect_forbidden"
+            except CannotConnectRateLimited:
+                errors["base"] = "cannot_connect_rate_limited"
+            except CannotConnectServerError:
+                errors["base"] = "cannot_connect_server_error"
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -141,6 +153,18 @@ class CannotConnect(HomeAssistantError):
 
 class CannotConnectTimeout(HomeAssistantError):
     """Error to indicate the API request timed out."""
+
+
+class CannotConnectForbidden(HomeAssistantError):
+    """Error to indicate the API denied access."""
+
+
+class CannotConnectRateLimited(HomeAssistantError):
+    """Error to indicate the API is throttling requests."""
+
+
+class CannotConnectServerError(HomeAssistantError):
+    """Error to indicate the API returned a server-side failure."""
 
 
 class InvalidAuth(HomeAssistantError):

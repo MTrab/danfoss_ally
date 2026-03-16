@@ -7,6 +7,9 @@
     },
     "error": {
       "cannot_connect_timeout": "The Danfoss Ally API did not respond in time. This usually points to a temporary API or network problem.",
+      "cannot_connect_forbidden": "The Danfoss Ally API denied access (HTTP 403). This may indicate a temporary API-side permissions problem.",
+      "cannot_connect_rate_limited": "The Danfoss Ally API is rate limiting requests (HTTP 429). Please try again later.",
+      "cannot_connect_server_error": "The Danfoss Ally API reported a server error (HTTP 5xx). Please try again later.",
       "cannot_connect": "Unable to communicate with the Danfoss Ally API. Please try again.",
       "invalid_auth": "Authentication failed. Check your API key and secret.",
       "unknown": "Something unexpected went wrong in the Danfoss Ally integration or API."
