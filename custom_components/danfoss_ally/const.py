@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import json
+from pathlib import Path
 
 from homeassistant.const import Platform
 
@@ -33,3 +35,17 @@ LEGACY_PRESET_ALIASES = {
 }
 
 ACTION_TYPE_SET_PRESET_TEMPERATURE = "set_preset_temperature"
+
+
+def _load_integration_version() -> str:
+    """Read the integration version from the manifest for outbound identifiers."""
+    manifest_path = Path(__file__).with_name("manifest.json")
+    try:
+        with manifest_path.open(encoding="utf-8") as manifest_file:
+            return str(json.load(manifest_file)["version"])
+    except OSError, KeyError, TypeError, ValueError:
+        return "unknown"
+
+
+INTEGRATION_VERSION = _load_integration_version()
+USER_AGENT_PREFIX = f"Home-Assistant-Danfoss-Ally-{INTEGRATION_VERSION}"

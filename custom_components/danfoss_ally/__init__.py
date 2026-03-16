@@ -12,7 +12,14 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from pydanfossally import DanfossAlly, exceptions
 
-from .const import API_TIMEOUT, CONF_KEY, CONF_SECRET, DOMAIN, PLATFORMS
+from .const import (
+    API_TIMEOUT,
+    CONF_KEY,
+    CONF_SECRET,
+    DOMAIN,
+    PLATFORMS,
+    USER_AGENT_PREFIX,
+)
 from .coordinator import (
     DanfossConfigEntry,
     DanfossAllyRuntimeData,
@@ -59,7 +66,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> bool:
     """Set up Danfoss Ally from a config entry."""
-    client = DanfossAlly(timeout=API_TIMEOUT)
+    client = DanfossAlly(
+        timeout=API_TIMEOUT,
+        user_agent_prefix=USER_AGENT_PREFIX,
+    )
 
     try:
         authorized = await client.initialize(
