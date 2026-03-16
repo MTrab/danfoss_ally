@@ -82,19 +82,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> b
         ) from err
     except exceptions.InternalServerError as err:
         await client.aclose()
-        raise ConfigEntryNotReady(
-            "Danfoss Ally API server error (HTTP 5xx)."
-        ) from err
+        raise ConfigEntryNotReady("Danfoss Ally API server error (HTTP 5xx).") from err
     except exceptions.APIError as err:
         await client.aclose()
-        raise ConfigEntryNotReady(
-            f"Unexpected Danfoss Ally API error: {err}"
-        ) from err
+        raise ConfigEntryNotReady(f"Unexpected Danfoss Ally API error: {err}") from err
     except exceptions.UnexpectedError as err:
         await client.aclose()
-        raise ConfigEntryNotReady(
-            "Unexpected Danfoss Ally API error."
-        ) from err
+        raise ConfigEntryNotReady("Unexpected Danfoss Ally API error.") from err
     except Exception as err:  # pylint: disable=broad-except
         await client.aclose()
         raise ConfigEntryNotReady("Unexpected Danfoss Ally setup error.") from err

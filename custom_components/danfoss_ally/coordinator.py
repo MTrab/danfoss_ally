@@ -269,7 +269,9 @@ class DanfossAllyDataUpdateCoordinator(
             exceptions.APIError,
             exceptions.UnexpectedError,
         ) as err:
-            raise HomeAssistantError(f"{error_message}: {_describe_api_error(err)}") from err
+            raise HomeAssistantError(
+                f"{error_message}: {_describe_api_error(err)}"
+            ) from err
 
         if result is False:
             raise HomeAssistantError(error_message)
