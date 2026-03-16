@@ -79,7 +79,7 @@ class DanfossAllyDataUpdateCoordinator(
                 devices = await self.client.refresh_devices()
         except exceptions.UnauthorizedError as err:
             raise ConfigEntryAuthFailed(
-                "Authentication with Danfoss Ally failed"
+                "Authentication with the Danfoss Ally API failed. Check your API key and secret"
             ) from err
         except (
             TimeoutError,
@@ -219,7 +219,7 @@ class DanfossAllyDataUpdateCoordinator(
             result = await request
         except exceptions.UnauthorizedError as err:
             raise ConfigEntryAuthFailed(
-                "Authentication with Danfoss Ally failed"
+                "Authentication with the Danfoss Ally API failed. Check your API key and secret"
             ) from err
         except (
             TimeoutError,

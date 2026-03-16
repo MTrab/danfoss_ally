@@ -65,17 +65,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> b
         )
     except TimeoutError as err:
         await client.aclose()
-        raise ConfigEntryNotReady("Timeout connecting to Danfoss Ally") from err
+        raise ConfigEntryNotReady(
+            "Timed out while communicating with the Danfoss Ally API"
+        ) from err
     except ConnectionError as err:
         await client.aclose()
-        raise ConfigEntryNotReady("Could not connect to Danfoss Ally") from err
+        raise ConfigEntryNotReady(
+            "Unable to reach the Danfoss Ally API. Please try again"
+        ) from err
     except Exception as err:  # pylint: disable=broad-except
         await client.aclose()
-        raise ConfigEntryNotReady("Unexpected Danfoss Ally setup failure") from err
+        raise ConfigEntryNotReady(
+            "Something went wrong while setting up Danfoss Ally"
+        ) from err
 
     if not authorized:
         await client.aclose()
-        raise ConfigEntryAuthFailed("Authentication with Danfoss Ally failed")
+        raise ConfigEntryAuthFailed(
+            "Authentication with the Danfoss Ally API failed. Check your API key and secret"
+        )
 
     coordinator = DanfossAllyDataUpdateCoordinator(hass, client, entry)
 

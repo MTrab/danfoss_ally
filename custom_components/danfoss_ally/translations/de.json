@@ -6,9 +6,10 @@
       "reconfigure_successful": "Die Neukonfiguration war erfolgreich."
     },
     "error": {
-      "cannot_connect": "Verbindung fehlgeschlagen",
-      "invalid_auth": "Ungültige Authentifizierung",
-      "unknown": "Unerwarteter Fehler"
+      "cannot_connect_timeout": "Die Danfoss Ally API hat nicht rechtzeitig geantwortet. Das deutet meist auf ein vorübergehendes Problem mit der API oder dem Netzwerk hin.",
+      "cannot_connect": "Die Kommunikation mit der Danfoss Ally API ist fehlgeschlagen. Bitte versuche es erneut.",
+      "invalid_auth": "Authentifizierung fehlgeschlagen. Prüfe deinen API-Schlüssel und dein Geheimnis.",
+      "unknown": "In der Danfoss Ally Integration oder API ist ein unerwarteter Fehler aufgetreten."
     },
     "step": {
       "user": {

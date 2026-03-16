@@ -6,9 +6,10 @@
       "reconfigure_successful": "Omkonfiguration blev gennemført."
     },
     "error": {
-      "cannot_connect": "Kunne ikke forbinde",
-      "invalid_auth": "Ugyldig autentifikation",
-      "unknown": "Uventet fejl"
+      "cannot_connect_timeout": "Danfoss Ally API'et svarede ikke i tide. Det peger som regel på et midlertidigt problem med API'et eller netværket.",
+      "cannot_connect": "Kunne ikke kommunikere med Danfoss Ally API'et. Prøv igen.",
+      "invalid_auth": "Godkendelse mislykkedes. Tjek din API-nøgle og hemmelighed.",
+      "unknown": "Der opstod en uventet fejl i Danfoss Ally integrationen eller API'et."
     },
     "step": {
       "user": {

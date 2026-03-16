@@ -30,10 +30,12 @@ async def validate_input(data: Mapping[str, str]) -> dict[str, str]:
     client = DanfossAlly(timeout=API_TIMEOUT)
     try:
         authorized = await client.initialize(data[CONF_KEY], data[CONF_SECRET])
-    except (TimeoutError, ConnectionError, exceptions.APIError) as err:
+    except TimeoutError as err:
+        raise CannotConnectTimeout from err
+    except (ConnectionError, exceptions.APIError) as err:
         raise CannotConnect from err
     except exceptions.UnexpectedError as err:
-        raise CannotConnect from err
+        raise UnknownError from err
     finally:
         await client.aclose()
 
@@ -83,10 +85,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 validated = await validate_input(user_input)
+            except CannotConnectTimeout:
+                errors["base"] = "cannot_connect_timeout"
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
+            except UnknownError:
+                errors["base"] = "unknown"
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception during config flow")
                 errors["base"] = "unknown"
@@ -133,5 +139,13 @@ class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
 
 
+class CannotConnectTimeout(HomeAssistantError):
+    """Error to indicate the API request timed out."""
+
+
 class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""
+
+
+class UnknownError(HomeAssistantError):
+    """Error to indicate an unexpected integration or API failure."""
