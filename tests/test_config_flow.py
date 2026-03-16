@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 from pydanfossally import exceptions
 
+from custom_components.danfoss_ally.const import USER_AGENT_PREFIX
 from custom_components.danfoss_ally.config_flow import (
     CannotConnect,
     CannotConnectForbidden,
@@ -25,15 +26,17 @@ async def test_validate_input_success(monkeypatch) -> None:
     client = AsyncMock()
     client.initialize.return_value = True
     client.aclose.return_value = None
+    created_kwargs: dict[str, object] = {}
 
     monkeypatch.setattr(
         "custom_components.danfoss_ally.config_flow.DanfossAlly",
-        lambda *args, **kwargs: client,
+        lambda *args, **kwargs: created_kwargs.update(kwargs) or client,
     )
 
     result = await validate_input({"key": "abc", "secret": "def"})
 
     assert result == {"title": "Danfoss Ally"}
+    assert created_kwargs["user_agent_prefix"] == USER_AGENT_PREFIX
 
 
 @pytest.mark.asyncio

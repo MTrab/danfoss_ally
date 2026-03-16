@@ -13,7 +13,7 @@
         "pydanfossally"
     ],
     "requirements": [
-        "pydanfossally==1.0.2"
+        "pydanfossally@git+https://github.com/MTrab/pydanfossally.git@enhancement/user-agent-header"
     ],
     "version": "2.0.0"
 }

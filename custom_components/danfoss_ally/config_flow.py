@@ -13,7 +13,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from pydanfossally import DanfossAlly, exceptions
 
-from .const import API_TIMEOUT, CONF_KEY, CONF_SECRET, DOMAIN
+from .const import API_TIMEOUT, CONF_KEY, CONF_SECRET, DOMAIN, USER_AGENT_PREFIX
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +34,10 @@ def _format_error(err: BaseException | None) -> str:
 
 async def validate_input(data: Mapping[str, str]) -> dict[str, str]:
     """Validate credentials against the Danfoss Ally API."""
-    client = DanfossAlly(timeout=API_TIMEOUT)
+    client = DanfossAlly(
+        timeout=API_TIMEOUT,
+        user_agent_prefix=USER_AGENT_PREFIX,
+    )
     try:
         authorized = await client.initialize(data[CONF_KEY], data[CONF_SECRET])
     except TimeoutError as err:
