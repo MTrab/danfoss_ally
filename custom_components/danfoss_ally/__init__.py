@@ -21,7 +21,7 @@ from .coordinator import (
 
 _LOGGER = logging.getLogger(__name__)
 AUTH_FAILED_MESSAGE = (
-    "Authentication with the Danfoss Ally API failed. Check your API key and secret"
+    "Authentication failed. Check your API key and secret."
 )
 
 CONFIG_SCHEMA = vol.Schema(
@@ -68,44 +68,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> b
         )
     except TimeoutError as err:
         await client.aclose()
-        raise ConfigEntryNotReady(
-            "The Danfoss Ally API did not respond in time. This usually points to a temporary API or network problem."
-        ) from err
+        raise ConfigEntryNotReady("Danfoss Ally API timeout.") from err
     except ConnectionError as err:
         await client.aclose()
-        raise ConfigEntryNotReady(
-            "Unable to reach the Danfoss Ally API. This usually points to a temporary API or network problem."
-        ) from err
+        raise ConfigEntryNotReady("Could not reach the Danfoss Ally API.") from err
     except exceptions.ForbiddenError as err:
         await client.aclose()
-        raise ConfigEntryNotReady(
-            "The Danfoss Ally API denied access (HTTP 403). This may indicate a temporary API-side permissions problem."
-        ) from err
+        raise ConfigEntryNotReady("Danfoss Ally API denied access (HTTP 403).") from err
     except exceptions.RateLimitError as err:
         await client.aclose()
         raise ConfigEntryNotReady(
-            "The Danfoss Ally API is rate limiting requests (HTTP 429). Please try again later."
+            "Danfoss Ally API rate limit reached (HTTP 429)."
         ) from err
     except exceptions.InternalServerError as err:
         await client.aclose()
         raise ConfigEntryNotReady(
-            "The Danfoss Ally API reported a server error (HTTP 5xx). Please try again later."
+            "Danfoss Ally API server error (HTTP 5xx)."
         ) from err
     except exceptions.APIError as err:
         await client.aclose()
         raise ConfigEntryNotReady(
-            f"The Danfoss Ally API returned an unexpected error: {err}"
+            f"Unexpected Danfoss Ally API error: {err}"
         ) from err
     except exceptions.UnexpectedError as err:
         await client.aclose()
         raise ConfigEntryNotReady(
-            "Something unexpected went wrong while communicating with the Danfoss Ally API."
+            "Unexpected Danfoss Ally API error."
         ) from err
     except Exception as err:  # pylint: disable=broad-except
         await client.aclose()
-        raise ConfigEntryNotReady(
-            "Something unexpected went wrong while setting up Danfoss Ally."
-        ) from err
+        raise ConfigEntryNotReady("Unexpected Danfoss Ally setup error.") from err
 
     if not authorized:
         await client.aclose()

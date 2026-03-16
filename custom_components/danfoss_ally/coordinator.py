@@ -28,7 +28,7 @@ RATE_LIMIT_RETRY_AFTER = 900.0
 SERVER_ERROR_RETRY_AFTER = 600.0
 GENERIC_API_RETRY_AFTER = 300.0
 AUTH_FAILED_MESSAGE = (
-    "Authentication with the Danfoss Ally API failed. Check your API key and secret"
+    "Authentication failed. Check your API key and secret."
 )
 
 
@@ -40,43 +40,22 @@ def _format_error(err: BaseException) -> str:
 def _describe_api_error(err: BaseException) -> str:
     """Return a user-facing explanation for common API failures."""
     if isinstance(err, TimeoutError):
-        return (
-            "The Danfoss Ally API did not respond in time. "
-            "This usually points to a temporary API or network problem."
-        )
+        return "Danfoss Ally API timeout."
     if isinstance(err, ConnectionError):
-        return (
-            "Unable to reach the Danfoss Ally API. "
-            "This usually points to a temporary API or network problem."
-        )
+        return "Could not reach the Danfoss Ally API."
     if isinstance(err, exceptions.ForbiddenError):
-        return (
-            "The Danfoss Ally API denied access (HTTP 403). "
-            "This may indicate a temporary API-side permissions problem."
-        )
+        return "Danfoss Ally API denied access (HTTP 403)."
     if isinstance(err, exceptions.RateLimitError):
-        return (
-            "The Danfoss Ally API is rate limiting requests (HTTP 429). "
-            "Please try again later."
-        )
+        return "Danfoss Ally API rate limit reached (HTTP 429)."
     if isinstance(err, exceptions.InternalServerError):
-        return (
-            "The Danfoss Ally API reported a server error (HTTP 5xx). "
-            "Please try again later."
-        )
+        return "Danfoss Ally API server error (HTTP 5xx)."
     if isinstance(err, exceptions.BadRequestError):
-        return (
-            "The Danfoss Ally API rejected the request (HTTP 400). "
-            "This may indicate invalid data or an integration issue."
-        )
+        return "Danfoss Ally API rejected the request (HTTP 400)."
     if isinstance(err, exceptions.NotFoundError):
-        return (
-            "The Danfoss Ally API could not find the requested resource (HTTP 404). "
-            "This may indicate stale API data or an integration issue."
-        )
+        return "Danfoss Ally API resource not found (HTTP 404)."
     if isinstance(err, exceptions.APIError):
-        return f"The Danfoss Ally API returned an unexpected error: {_format_error(err)}"
-    return "Something unexpected went wrong while communicating with the Danfoss Ally API."
+        return f"Unexpected Danfoss Ally API error: {_format_error(err)}"
+    return "Unexpected Danfoss Ally API error."
 
 
 def _retry_after_for_error(err: BaseException) -> float:

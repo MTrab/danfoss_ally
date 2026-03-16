@@ -6,13 +6,13 @@
       "reconfigure_successful": "Omkonfiguration blev gennemført."
     },
     "error": {
-      "cannot_connect_timeout": "Danfoss Ally API'et svarede ikke i tide. Det peger som regel på et midlertidigt problem med API'et eller netværket.",
-      "cannot_connect_forbidden": "Danfoss Ally API'et afviste adgangen (HTTP 403). Det kan pege på et midlertidigt rettighedsproblem på API-siden.",
-      "cannot_connect_rate_limited": "Danfoss Ally API'et begrænser antallet af forespørgsler (HTTP 429). Prøv igen senere.",
-      "cannot_connect_server_error": "Danfoss Ally API'et meldte en serverfejl (HTTP 5xx). Prøv igen senere.",
-      "cannot_connect": "Kunne ikke kommunikere med Danfoss Ally API'et. Prøv igen.",
+      "cannot_connect_timeout": "Timeout fra Danfoss Ally API'et.",
+      "cannot_connect_forbidden": "Danfoss Ally API'et afviste adgangen (HTTP 403).",
+      "cannot_connect_rate_limited": "Danfoss Ally API'et ramte rate limit (HTTP 429).",
+      "cannot_connect_server_error": "Serverfejl fra Danfoss Ally API'et (HTTP 5xx).",
+      "cannot_connect": "Kunne ikke kontakte Danfoss Ally API'et.",
       "invalid_auth": "Godkendelse mislykkedes. Tjek din API-nøgle og hemmelighed.",
-      "unknown": "Der opstod en uventet fejl i Danfoss Ally integrationen eller API'et."
+      "unknown": "Uventet Danfoss Ally-fejl."
     },
     "step": {
       "user": {
