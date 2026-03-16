@@ -40,7 +40,9 @@ def _format_error(err: BaseException) -> str:
 def _describe_api_error(err: BaseException) -> str:
     """Return a user-facing explanation for common API failures."""
     if isinstance(err, TimeoutError):
-        return "Danfoss Ally API timeout. Opening an issue will not help with this error."
+        return (
+            "Danfoss Ally API timeout. Opening an issue will not help with this error."
+        )
     if isinstance(err, ConnectionError):
         return "Could not reach the Danfoss Ally API."
     if isinstance(err, exceptions.ForbiddenError):
