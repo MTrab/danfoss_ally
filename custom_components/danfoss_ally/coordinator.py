@@ -21,11 +21,58 @@ from .const import DOMAIN, SCAN_INTERVAL
 _LOGGER = logging.getLogger(__name__)
 WRITE_REFRESH_DELAY = 1.0
 PENDING_WRITE_TIMEOUT = 60.0
+TIMEOUT_RETRY_AFTER = 60.0
+CONNECTION_RETRY_AFTER = 120.0
+FORBIDDEN_RETRY_AFTER = 1800.0
+RATE_LIMIT_RETRY_AFTER = 900.0
+SERVER_ERROR_RETRY_AFTER = 600.0
+GENERIC_API_RETRY_AFTER = 300.0
+AUTH_FAILED_MESSAGE = (
+    "Authentication failed. Check your Consumer Key and Consumer Secret."
+)
 
 
 def _format_error(err: BaseException) -> str:
     """Return a useful error string even for exceptions without a message."""
     return str(err) or err.__class__.__name__
+
+
+def _describe_api_error(err: BaseException) -> str:
+    """Return a user-facing explanation for common API failures."""
+    if isinstance(err, TimeoutError):
+        return (
+            "Danfoss Ally API timeout. Opening an issue will not help with this error."
+        )
+    if isinstance(err, ConnectionError):
+        return "Could not reach the Danfoss Ally API."
+    if isinstance(err, exceptions.ForbiddenError):
+        return "Danfoss Ally API denied access (HTTP 403)."
+    if isinstance(err, exceptions.RateLimitError):
+        return "Danfoss Ally API rate limit reached (HTTP 429)."
+    if isinstance(err, exceptions.InternalServerError):
+        return "Danfoss Ally API server error (HTTP 5xx)."
+    if isinstance(err, exceptions.BadRequestError):
+        return "Danfoss Ally API rejected the request (HTTP 400)."
+    if isinstance(err, exceptions.NotFoundError):
+        return "Danfoss Ally API resource not found (HTTP 404)."
+    if isinstance(err, exceptions.APIError):
+        return f"Unexpected Danfoss Ally API error: {_format_error(err)}"
+    return "Unexpected Danfoss Ally API error."
+
+
+def _retry_after_for_error(err: BaseException) -> float:
+    """Return the retry delay in seconds for common API failures."""
+    if isinstance(err, TimeoutError):
+        return TIMEOUT_RETRY_AFTER
+    if isinstance(err, ConnectionError):
+        return CONNECTION_RETRY_AFTER
+    if isinstance(err, exceptions.ForbiddenError):
+        return FORBIDDEN_RETRY_AFTER
+    if isinstance(err, exceptions.RateLimitError):
+        return RATE_LIMIT_RETRY_AFTER
+    if isinstance(err, exceptions.InternalServerError):
+        return SERVER_ERROR_RETRY_AFTER
+    return GENERIC_API_RETRY_AFTER
 
 
 @dataclass(slots=True)
@@ -78,9 +125,7 @@ class DanfossAllyDataUpdateCoordinator(
             else:
                 devices = await self.client.refresh_devices()
         except exceptions.UnauthorizedError as err:
-            raise ConfigEntryAuthFailed(
-                "Authentication with Danfoss Ally failed"
-            ) from err
+            raise ConfigEntryAuthFailed(AUTH_FAILED_MESSAGE) from err
         except (
             TimeoutError,
             ConnectionError,
@@ -88,7 +133,8 @@ class DanfossAllyDataUpdateCoordinator(
             exceptions.UnexpectedError,
         ) as err:
             raise UpdateFailed(
-                f"Failed to fetch Danfoss Ally devices: {_format_error(err)}"
+                _describe_api_error(err),
+                retry_after=_retry_after_for_error(err),
             ) from err
 
         if self._is_stale_snapshot(devices):
@@ -218,16 +264,16 @@ class DanfossAllyDataUpdateCoordinator(
         try:
             result = await request
         except exceptions.UnauthorizedError as err:
-            raise ConfigEntryAuthFailed(
-                "Authentication with Danfoss Ally failed"
-            ) from err
+            raise ConfigEntryAuthFailed(AUTH_FAILED_MESSAGE) from err
         except (
             TimeoutError,
             ConnectionError,
             exceptions.APIError,
             exceptions.UnexpectedError,
         ) as err:
-            raise HomeAssistantError(f"{error_message}: {_format_error(err)}") from err
+            raise HomeAssistantError(
+                f"{error_message}: {_describe_api_error(err)}"
+            ) from err
 
         if result is False:
             raise HomeAssistantError(error_message)

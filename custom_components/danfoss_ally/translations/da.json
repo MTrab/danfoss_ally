@@ -6,31 +6,35 @@
       "reconfigure_successful": "Omkonfiguration blev gennemført."
     },
     "error": {
-      "cannot_connect": "Kunne ikke forbinde",
-      "invalid_auth": "Ugyldig autentifikation",
-      "unknown": "Uventet fejl"
+      "cannot_connect_timeout": "Timeout fra Danfoss Ally API'et. Det hjælper ikke at oprette et issue for denne fejl.",
+      "cannot_connect_forbidden": "Danfoss Ally API'et afviste adgangen (HTTP 403).",
+      "cannot_connect_rate_limited": "Danfoss Ally API'et ramte rate limit (HTTP 429).",
+      "cannot_connect_server_error": "Serverfejl fra Danfoss Ally API'et (HTTP 5xx).",
+      "cannot_connect": "Kunne ikke kontakte Danfoss Ally API'et.",
+      "invalid_auth": "Godkendelse mislykkedes. Tjek din Consumer Key og Consumer Secret.",
+      "unknown": "Uventet fejl: {error}"
     },
     "step": {
       "user": {
         "data": {
-          "key": "API Key",
-          "secret": "API Secret"
+          "key": "Consumer Key",
+          "secret": "Consumer Secret"
         },
         "description": "Forbind Home Assistant til din Danfoss Ally konto.",
         "title": "Forbind Danfoss Ally"
       },
       "reauth_confirm": {
         "data": {
-          "key": "API Key",
-          "secret": "API Secret"
+          "key": "Consumer Key",
+          "secret": "Consumer Secret"
         },
         "description": "Opdater legitimationsoplysningerne til din Danfoss Ally konto.",
         "title": "Genautoriser Danfoss Ally"
       },
       "reconfigure": {
         "data": {
-          "key": "API Key",
-          "secret": "API Secret"
+          "key": "Consumer Key",
+          "secret": "Consumer Secret"
         },
         "description": "Opdater de gemte legitimationsoplysninger for denne Danfoss Ally konfiguration.",
         "title": "Omkonfigurer Danfoss Ally"

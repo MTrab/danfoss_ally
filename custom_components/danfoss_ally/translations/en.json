@@ -6,31 +6,35 @@
       "reconfigure_successful": "Reconfiguration was successful."
     },
     "error": {
-      "cannot_connect": "Failed to connect",
-      "invalid_auth": "Invalid authentication",
-      "unknown": "Unexpected error"
+      "cannot_connect_timeout": "Danfoss Ally API timeout. Opening an issue will not help with this error.",
+      "cannot_connect_forbidden": "Danfoss Ally API denied access (HTTP 403).",
+      "cannot_connect_rate_limited": "Danfoss Ally API rate limit reached (HTTP 429).",
+      "cannot_connect_server_error": "Danfoss Ally API server error (HTTP 5xx).",
+      "cannot_connect": "Could not reach the Danfoss Ally API.",
+      "invalid_auth": "Authentication failed. Check your Consumer Key and Consumer Secret.",
+      "unknown": "Unexpected error: {error}"
     },
     "step": {
       "user": {
         "data": {
-          "key": "API Key",
-          "secret": "API Secret"
+          "key": "Consumer Key",
+          "secret": "Consumer Secret"
         },
         "description": "Connect Home Assistant to your Danfoss Ally account.",
         "title": "Connect Danfoss Ally"
       },
       "reauth_confirm": {
         "data": {
-          "key": "API Key",
-          "secret": "API Secret"
+          "key": "Consumer Key",
+          "secret": "Consumer Secret"
         },
         "description": "Update the credentials for your Danfoss Ally account.",
         "title": "Re-authenticate Danfoss Ally"
       },
       "reconfigure": {
         "data": {
-          "key": "API Key",
-          "secret": "API Secret"
+          "key": "Consumer Key",
+          "secret": "Consumer Secret"
         },
         "description": "Update the stored credentials for this Danfoss Ally configuration.",
         "title": "Reconfigure Danfoss Ally"

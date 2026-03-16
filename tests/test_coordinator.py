@@ -6,9 +6,17 @@ import time
 from unittest.mock import AsyncMock
 
 import pytest
+from homeassistant.helpers.update_coordinator import UpdateFailed
+from pydanfossally import exceptions
 from custom_components.danfoss_ally.coordinator import (
+    CONNECTION_RETRY_AFTER,
     DanfossAllyDataUpdateCoordinator,
+    FORBIDDEN_RETRY_AFTER,
+    GENERIC_API_RETRY_AFTER,
     PendingWrite,
+    RATE_LIMIT_RETRY_AFTER,
+    SERVER_ERROR_RETRY_AFTER,
+    TIMEOUT_RETRY_AFTER,
 )
 
 
@@ -195,3 +203,33 @@ async def test_update_data_uses_per_device_refresh_after_initial_load() -> None:
     assert devices["device-1"]["last_response_time"] == 101
     coordinator.client.refresh_devices.assert_awaited_once()
     coordinator.client.get_devices.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("side_effect", "expected_retry_after"),
+    [
+        (TimeoutError(), TIMEOUT_RETRY_AFTER),
+        (ConnectionError(), CONNECTION_RETRY_AFTER),
+        (exceptions.ForbiddenError(), FORBIDDEN_RETRY_AFTER),
+        (exceptions.RateLimitError(), RATE_LIMIT_RETRY_AFTER),
+        (exceptions.InternalServerError(), SERVER_ERROR_RETRY_AFTER),
+        (exceptions.APIError("boom"), GENERIC_API_RETRY_AFTER),
+        (exceptions.UnexpectedError(), GENERIC_API_RETRY_AFTER),
+    ],
+)
+async def test_update_data_sets_retry_after_by_error_type(
+    side_effect: BaseException,
+    expected_retry_after: float,
+) -> None:
+    """Coordinator retries should back off differently by failure type."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator.client = AsyncMock()
+    coordinator.client.get_devices.side_effect = side_effect
+    coordinator.data = None
+    coordinator._pending_writes = {}
+
+    with pytest.raises(UpdateFailed) as err_info:
+        await coordinator._async_update_data()
+
+    assert err_info.value.retry_after == expected_retry_after

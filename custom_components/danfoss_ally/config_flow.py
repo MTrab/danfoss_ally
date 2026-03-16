@@ -25,15 +25,30 @@ STEP_SCHEMA = vol.Schema(
 )
 
 
+def _format_error(err: BaseException | None) -> str:
+    """Return a useful error string even for exceptions without a message."""
+    if err is None:
+        return "UnknownError"
+    return str(err) or err.__class__.__name__
+
+
 async def validate_input(data: Mapping[str, str]) -> dict[str, str]:
     """Validate credentials against the Danfoss Ally API."""
     client = DanfossAlly(timeout=API_TIMEOUT)
     try:
         authorized = await client.initialize(data[CONF_KEY], data[CONF_SECRET])
-    except (TimeoutError, ConnectionError, exceptions.APIError) as err:
+    except TimeoutError as err:
+        raise CannotConnectTimeout from err
+    except exceptions.ForbiddenError as err:
+        raise CannotConnectForbidden from err
+    except exceptions.RateLimitError as err:
+        raise CannotConnectRateLimited from err
+    except exceptions.InternalServerError as err:
+        raise CannotConnectServerError from err
+    except (ConnectionError, exceptions.APIError) as err:
         raise CannotConnect from err
     except exceptions.UnexpectedError as err:
-        raise CannotConnect from err
+        raise UnknownError from err
     finally:
         await client.aclose()
 
@@ -79,17 +94,33 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Validate credentials and create/update the entry."""
         errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] | None = None
 
         if user_input is not None:
             try:
                 validated = await validate_input(user_input)
+            except CannotConnectTimeout:
+                errors["base"] = "cannot_connect_timeout"
+            except CannotConnectForbidden:
+                errors["base"] = "cannot_connect_forbidden"
+            except CannotConnectRateLimited:
+                errors["base"] = "cannot_connect_rate_limited"
+            except CannotConnectServerError:
+                errors["base"] = "cannot_connect_server_error"
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
+            except UnknownError as err:
+                _LOGGER.exception("Unexpected API exception during config flow")
+                errors["base"] = "unknown"
+                description_placeholders = {
+                    "error": _format_error(err.__cause__ or err)
+                }
+            except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception during config flow")
                 errors["base"] = "unknown"
+                description_placeholders = {"error": _format_error(err)}
             else:
                 if step_id == "user":
                     duplicate_abort = self._async_abort_if_duplicate_key(
@@ -117,7 +148,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id=step_id, data_schema=STEP_SCHEMA, errors=errors
+            step_id=step_id,
+            data_schema=STEP_SCHEMA,
+            errors=errors,
+            description_placeholders=description_placeholders,
         )
 
     @callback
@@ -133,5 +167,25 @@ class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
 
 
+class CannotConnectTimeout(HomeAssistantError):
+    """Error to indicate the API request timed out."""
+
+
+class CannotConnectForbidden(HomeAssistantError):
+    """Error to indicate the API denied access."""
+
+
+class CannotConnectRateLimited(HomeAssistantError):
+    """Error to indicate the API is throttling requests."""
+
+
+class CannotConnectServerError(HomeAssistantError):
+    """Error to indicate the API returned a server-side failure."""
+
+
 class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""
+
+
+class UnknownError(HomeAssistantError):
+    """Error to indicate an unexpected integration or API failure."""
