@@ -6,7 +6,7 @@
       "reconfigure_successful": "Die Neukonfiguration war erfolgreich."
     },
     "error": {
-      "cannot_connect_timeout": "Zeitüberschreitung bei der Danfoss Ally API. Du musst kein Issue erstellen, es sei denn, das passiert weiterhin.",
+      "cannot_connect_timeout": "Zeitüberschreitung bei der Danfoss Ally API. Ein Issue hilft bei diesem Fehler nicht weiter.",
       "cannot_connect_forbidden": "Danfoss Ally API hat den Zugriff verweigert (HTTP 403).",
       "cannot_connect_rate_limited": "Danfoss Ally API hat das Rate Limit erreicht (HTTP 429).",
       "cannot_connect_server_error": "Serverfehler der Danfoss Ally API (HTTP 5xx).",

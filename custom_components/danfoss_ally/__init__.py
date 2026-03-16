@@ -69,7 +69,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> b
     except TimeoutError as err:
         await client.aclose()
         raise ConfigEntryNotReady(
-            "Danfoss Ally API timeout. No need to open an issue unless it keeps happening."
+            "Danfoss Ally API timeout. Opening an issue will not help with this error."
         ) from err
     except ConnectionError as err:
         await client.aclose()
