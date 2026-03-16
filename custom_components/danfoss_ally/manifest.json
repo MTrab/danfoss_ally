@@ -13,7 +13,7 @@
         "pydanfossally"
     ],
     "requirements": [
-        "pydanfossally@git+https://github.com/MTrab/pydanfossally.git@enhancement/common-http-errors"
+        "pydanfossally@git+https://github.com/MTrab/pydanfossally.git@master"
     ],
     "version": "2.0.0"
 }
