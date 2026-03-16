@@ -6,7 +6,7 @@
       "reconfigure_successful": "Omkonfiguration blev gennemført."
     },
     "error": {
-      "cannot_connect_timeout": "Timeout fra Danfoss Ally API'et.",
+      "cannot_connect_timeout": "Timeout fra Danfoss Ally API'et. Det er ikke nødvendigt at oprette et issue, medmindre det bliver ved.",
       "cannot_connect_forbidden": "Danfoss Ally API'et afviste adgangen (HTTP 403).",
       "cannot_connect_rate_limited": "Danfoss Ally API'et ramte rate limit (HTTP 429).",
       "cannot_connect_server_error": "Serverfejl fra Danfoss Ally API'et (HTTP 5xx).",
