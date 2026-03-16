@@ -21,6 +21,12 @@ from .const import DOMAIN, SCAN_INTERVAL
 _LOGGER = logging.getLogger(__name__)
 WRITE_REFRESH_DELAY = 1.0
 PENDING_WRITE_TIMEOUT = 60.0
+TIMEOUT_RETRY_AFTER = 60.0
+CONNECTION_RETRY_AFTER = 120.0
+FORBIDDEN_RETRY_AFTER = 1800.0
+RATE_LIMIT_RETRY_AFTER = 900.0
+SERVER_ERROR_RETRY_AFTER = 600.0
+GENERIC_API_RETRY_AFTER = 300.0
 AUTH_FAILED_MESSAGE = (
     "Authentication with the Danfoss Ally API failed. Check your API key and secret"
 )
@@ -71,6 +77,21 @@ def _describe_api_error(err: BaseException) -> str:
     if isinstance(err, exceptions.APIError):
         return f"The Danfoss Ally API returned an unexpected error: {_format_error(err)}"
     return "Something unexpected went wrong while communicating with the Danfoss Ally API."
+
+
+def _retry_after_for_error(err: BaseException) -> float:
+    """Return the retry delay in seconds for common API failures."""
+    if isinstance(err, TimeoutError):
+        return TIMEOUT_RETRY_AFTER
+    if isinstance(err, ConnectionError):
+        return CONNECTION_RETRY_AFTER
+    if isinstance(err, exceptions.ForbiddenError):
+        return FORBIDDEN_RETRY_AFTER
+    if isinstance(err, exceptions.RateLimitError):
+        return RATE_LIMIT_RETRY_AFTER
+    if isinstance(err, exceptions.InternalServerError):
+        return SERVER_ERROR_RETRY_AFTER
+    return GENERIC_API_RETRY_AFTER
 
 
 @dataclass(slots=True)
@@ -130,7 +151,10 @@ class DanfossAllyDataUpdateCoordinator(
             exceptions.APIError,
             exceptions.UnexpectedError,
         ) as err:
-            raise UpdateFailed(_describe_api_error(err)) from err
+            raise UpdateFailed(
+                _describe_api_error(err),
+                retry_after=_retry_after_for_error(err),
+            ) from err
 
         if self._is_stale_snapshot(devices):
             return self.data or devices
