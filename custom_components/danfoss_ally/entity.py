@@ -2,14 +2,48 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from typing import Any
 
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DEFAULT_NAME, DOMAIN
-from .coordinator import DanfossAllyDataUpdateCoordinator
+from .coordinator import DanfossAllyDataUpdateCoordinator, DanfossConfigEntry
+
+
+type DanfossEntityFactory = Callable[
+    [DanfossAllyDataUpdateCoordinator],
+    Iterable[Entity],
+]
+
+
+def async_setup_dynamic_platform_entities(
+    entry: DanfossConfigEntry,
+    async_add_entities: Callable[[list[Entity]], None],
+    entity_factory: DanfossEntityFactory,
+) -> None:
+    """Add entities now and whenever the coordinator discovers new devices."""
+    coordinator = entry.runtime_data.coordinator
+    known_unique_ids: set[str] = set()
+
+    @callback
+    def async_add_new_entities() -> None:
+        new_entities: list[Entity] = []
+
+        for entity in entity_factory(coordinator):
+            if entity.unique_id is None or entity.unique_id in known_unique_ids:
+                continue
+            known_unique_ids.add(entity.unique_id)
+            new_entities.append(entity)
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    async_add_new_entities()
+    entry.async_on_unload(coordinator.async_add_listener(async_add_new_entities))
 
 
 class DanfossAllyEntity(CoordinatorEntity[DanfossAllyDataUpdateCoordinator], Entity):
@@ -27,7 +61,9 @@ class DanfossAllyEntity(CoordinatorEntity[DanfossAllyDataUpdateCoordinator], Ent
     @property
     def device(self) -> dict[str, Any]:
         """Return the latest cached device data."""
-        return self.coordinator.data[self._device_id]
+        if self.coordinator.data is None:
+            return {}
+        return self.coordinator.data.get(self._device_id, {})
 
     def device_value(self, *keys: str, default: Any = None) -> Any:
         """Return the first available device value for the provided keys."""
@@ -49,4 +85,6 @@ class DanfossAllyEntity(CoordinatorEntity[DanfossAllyDataUpdateCoordinator], Ent
     @property
     def available(self) -> bool:
         """Return whether the backing device is online."""
-        return bool(self.device.get("online", True))
+        return self._device_id in (self.coordinator.data or {}) and bool(
+            self.device.get("online", True)
+        )

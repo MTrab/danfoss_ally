@@ -29,7 +29,7 @@ from .const import (
     PRESET_PAUSE,
 )
 from .coordinator import DanfossConfigEntry
-from .entity import DanfossAllyEntity
+from .entity import DanfossAllyEntity, async_setup_dynamic_platform_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -73,13 +73,16 @@ async def async_setup_entry(
         {vol.Optional("temperature"): vol.Any(vol.Coerce(float), None, str)},
         "async_set_external_temperature",
     )
+    async_setup_dynamic_platform_entities(entry, async_add_entities, _build_entities)
 
-    coordinator = entry.runtime_data.coordinator
-    async_add_entities(
+
+def _build_entities(coordinator) -> list[DanfossAllyClimate]:
+    """Build climate entities for currently discovered thermostats."""
+    return [
         DanfossAllyClimate(coordinator, device_id)
-        for device_id, device in coordinator.data.items()
+        for device_id, device in (coordinator.data or {}).items()
         if device.get("isThermostat")
-    )
+    ]
 
 
 class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):

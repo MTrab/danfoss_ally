@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 
 from .coordinator import DanfossConfigEntry
-from .entity import DanfossAllyEntity
+from .entity import DanfossAllyEntity, async_setup_dynamic_platform_entities
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -135,16 +135,19 @@ async def async_setup_entry(
     async_add_entities,
 ) -> None:
     """Set up Danfoss Ally binary sensors."""
-    coordinator = entry.runtime_data.coordinator
+    async_setup_dynamic_platform_entities(entry, async_add_entities, _build_entities)
+
+
+def _build_entities(coordinator) -> list[DanfossAllyBinarySensor]:
+    """Build binary sensor entities for currently discovered devices."""
     entities: list[DanfossAllyBinarySensor] = []
-    for device_id, device in coordinator.data.items():
+    for device_id, device in (coordinator.data or {}).items():
         for description in BINARY_SENSORS:
             if description.exists_fn(device):
                 entities.append(
                     DanfossAllyBinarySensor(coordinator, device_id, description)
                 )
-
-    async_add_entities(entities)
+    return entities
 
 
 class DanfossAllyBinarySensor(DanfossAllyEntity, BinarySensorEntity):
@@ -167,4 +170,7 @@ class DanfossAllyBinarySensor(DanfossAllyEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         """Return the current binary sensor state."""
-        return self.entity_description.value_fn(self.device)
+        try:
+            return self.entity_description.value_fn(self.device)
+        except (KeyError, TypeError):
+            return False
