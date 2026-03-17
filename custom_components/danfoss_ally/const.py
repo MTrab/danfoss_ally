@@ -14,7 +14,7 @@ CONF_SECRET = "secret"
 DEFAULT_NAME = "Danfoss"
 DOMAIN = "danfoss_ally"
 API_TIMEOUT = 30.0
-SCAN_INTERVAL = timedelta(seconds=45)
+SCAN_INTERVAL = timedelta(seconds=60)
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
