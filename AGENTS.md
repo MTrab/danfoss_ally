@@ -155,6 +155,9 @@ The agent must NOT merge a PR without explicit permission
 The agent must NOT use administrative merge overrides (for example `gh pr merge --admin`).
 
 Before merging any PR, the agent MUST wait until all required CI/status checks are green/passing.
+Before merging any PR, the agent MUST verify that the green/passing checks belong to the current PR head commit, not an earlier commit on the same branch or PR.
+If new commits are pushed to an open PR, the agent MUST treat the PR as unverified again and wait for the updated checks on the new head commit to finish green before merging.
+If any check is red, in progress, missing, or attached to a different commit than the current PR head, the agent MUST NOT merge.
 
 When a branch is merged it must also be deleted both local and remote, and changes merged to master must be pulled
 
