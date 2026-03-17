@@ -9,7 +9,6 @@ from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers import device_registry as dr
 from pydanfossally import DanfossAlly, exceptions
 
 from .const import (
@@ -22,8 +21,8 @@ from .const import (
 )
 from .coordinator import (
     DanfossConfigEntry,
-    DanfossAllyRuntimeData,
     DanfossAllyDataUpdateCoordinator,
+    DanfossAllyRuntimeData,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -121,8 +120,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> b
         await client.aclose()
         raise
 
-    _async_remove_stale_devices(hass, entry, coordinator.data)
-
     entry.runtime_data = DanfossAllyRuntimeData(client=client, coordinator=coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
@@ -156,22 +153,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> 
 async def async_reload_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> None:
     """Reload a config entry."""
     await hass.config_entries.async_reload(entry.entry_id)
-
-
-def _async_remove_stale_devices(
-    hass: HomeAssistant,
-    entry: DanfossConfigEntry,
-    devices: dict[str, dict[str, object]],
-) -> None:
-    """Remove devices that are no longer reported by the API."""
-    device_registry = dr.async_get(hass)
-    valid_identifiers = {(DOMAIN, device_id) for device_id in devices}
-
-    for device_entry in dr.async_entries_for_config_entry(
-        device_registry, entry.entry_id
-    ):
-        if not (device_entry.identifiers & valid_identifiers):
-            _LOGGER.warning(
-                "Removing device no longer reported by API: %s", device_entry.id
-            )
-            device_registry.async_remove_device(device_entry.id)

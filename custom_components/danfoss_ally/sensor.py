@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 
 from .coordinator import DanfossConfigEntry
-from .entity import DanfossAllyEntity
+from .entity import DanfossAllyEntity, async_setup_dynamic_platform_entities
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -117,14 +117,17 @@ async def async_setup_entry(
     async_add_entities,
 ) -> None:
     """Set up Danfoss Ally sensor entities."""
-    coordinator = entry.runtime_data.coordinator
+    async_setup_dynamic_platform_entities(entry, async_add_entities, _build_entities)
+
+
+def _build_entities(coordinator) -> list[DanfossAllySensor]:
+    """Build sensor entities for currently discovered devices."""
     entities: list[DanfossAllySensor] = []
-    for device_id, device in coordinator.data.items():
+    for device_id, device in (coordinator.data or {}).items():
         for description in SENSORS:
             if description.exists_fn(device):
                 entities.append(DanfossAllySensor(coordinator, device_id, description))
-
-    async_add_entities(entities)
+    return entities
 
 
 class DanfossAllySensor(DanfossAllyEntity, SensorEntity):
@@ -144,7 +147,10 @@ class DanfossAllySensor(DanfossAllyEntity, SensorEntity):
     @property
     def native_value(self) -> object:
         """Return the current sensor value."""
-        return self.entity_description.value_fn(self.device)
+        try:
+            return self.entity_description.value_fn(self.device)
+        except KeyError, TypeError:
+            return None
 
     @property
     def available(self) -> bool:

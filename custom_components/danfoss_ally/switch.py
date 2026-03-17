@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 
 from .coordinator import DanfossConfigEntry
-from .entity import DanfossAllyEntity
+from .entity import DanfossAllyEntity, async_setup_dynamic_platform_entities
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -69,16 +69,19 @@ async def async_setup_entry(
     async_add_entities,
 ) -> None:
     """Set up Danfoss Ally switches."""
-    coordinator = entry.runtime_data.coordinator
+    async_setup_dynamic_platform_entities(entry, async_add_entities, _build_entities)
+
+
+def _build_entities(coordinator) -> list[DanfossAllySwitch]:
+    """Build switch entities for currently discovered devices."""
     entities: list[DanfossAllySwitch] = []
-    for device_id, device in coordinator.data.items():
+    for device_id, device in (coordinator.data or {}).items():
         if str(device.get("model", "")).lower() == "icon zigbee module":
             continue
         for description in SWITCHES:
             if description.key in device:
                 entities.append(DanfossAllySwitch(coordinator, device_id, description))
-
-    async_add_entities(entities)
+    return entities
 
 
 class DanfossAllySwitch(DanfossAllyEntity, SwitchEntity):
@@ -98,7 +101,7 @@ class DanfossAllySwitch(DanfossAllyEntity, SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Return the current switch state."""
-        return bool(self.device[self.entity_description.key])
+        return bool(self.device.get(self.entity_description.key))
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the switch on."""
