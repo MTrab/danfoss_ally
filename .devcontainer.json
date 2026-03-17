@@ -45,7 +45,7 @@
 	"mounts": [
 		"source=${localWorkspaceFolder}/config,target=/config,type=bind,consistency=cached",
 		"source=${localEnv:HOME}/.codex/auth.json,target=/etc/codex/auth.json,readonly,type=bind",
-		"source=${localWorkspaceFolder}/../pydanfossally,target=/development/github/homeassistant/pydanfossally,type=bind",
+		"source=${localWorkspaceFolder}/../pydanfossally,target=/workspaces/pydanfossally,type=bind",
 		"source=gh-config,target=/home/vscode/.config/gh,type=volume"
 	]
 }
