@@ -172,5 +172,5 @@ class DanfossAllyBinarySensor(DanfossAllyEntity, BinarySensorEntity):
         """Return the current binary sensor state."""
         try:
             return self.entity_description.value_fn(self.device)
-        except (KeyError, TypeError):
+        except KeyError, TypeError:
             return False
