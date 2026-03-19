@@ -13,7 +13,7 @@
         "pydanfossally"
     ],
     "requirements": [
-        "pydanfossally==1.0.3"
+        "pydanfossally==1.0.4"
     ],
     "version": "2.0.2"
 }

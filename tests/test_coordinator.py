@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import time
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pydanfossally import exceptions
 from custom_components.danfoss_ally.coordinator import (
@@ -233,3 +234,52 @@ async def test_update_data_sets_retry_after_by_error_type(
         await coordinator._async_update_data()
 
     assert err_info.value.retry_after == expected_retry_after
+
+
+@pytest.mark.asyncio
+async def test_run_write_does_not_request_refresh_after_success() -> None:
+    """Writes should rely on optimistic state instead of forcing a full refresh."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator._async_apply_optimistic_updates = lambda *_args, **_kwargs: None
+    coordinator.async_request_refresh = AsyncMock()
+
+    await coordinator._async_run_write(
+        "device-1",
+        AsyncMock(return_value=True)(),
+        optimistic_updates=None,
+        error_message="boom",
+    )
+
+    coordinator.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_async_request_refresh_skips_when_refresh_is_active() -> None:
+    """Manual refresh requests should be ignored while another refresh is running."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator._refresh_in_progress = True
+
+    with patch.object(
+        DataUpdateCoordinator,
+        "async_request_refresh",
+        new=AsyncMock(),
+    ) as super_request_refresh:
+        await coordinator.async_request_refresh()
+
+    super_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_async_request_refresh_calls_super_when_idle() -> None:
+    """Manual refresh requests should still work when no refresh is active."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator._refresh_in_progress = False
+
+    with patch.object(
+        DataUpdateCoordinator,
+        "async_request_refresh",
+        new=AsyncMock(),
+    ) as super_request_refresh:
+        await coordinator.async_request_refresh()
+
+    super_request_refresh.assert_awaited_once()
