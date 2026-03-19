@@ -13,7 +13,7 @@
         "pydanfossally"
     ],
     "requirements": [
-        "pydanfossally@git+https://github.com/MTrab/pydanfossally.git@master"
+        "pydanfossally==1.0.4"
     ],
     "version": "2.0.2"
 }
