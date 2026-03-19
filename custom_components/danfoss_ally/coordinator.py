@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable
 from dataclasses import dataclass
 import logging
@@ -19,7 +18,6 @@ from pydanfossally import DanfossAlly, exceptions
 from .const import DOMAIN, SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
-WRITE_REFRESH_DELAY = 1.0
 PENDING_WRITE_TIMEOUT = 60.0
 TIMEOUT_RETRY_AFTER = 60.0
 CONNECTION_RETRY_AFTER = 120.0
@@ -116,31 +114,47 @@ class DanfossAllyDataUpdateCoordinator(
         )
         self.client = client
         self._pending_writes: dict[str, PendingWrite] = {}
+        self._refresh_in_progress = False
 
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         """Fetch the latest device list."""
+        self._refresh_in_progress = True
         try:
-            if self.data is None:
-                devices = await self.client.get_devices()
-            else:
-                devices = await self.client.refresh_devices()
-        except exceptions.UnauthorizedError as err:
-            raise ConfigEntryAuthFailed(AUTH_FAILED_MESSAGE) from err
-        except (
-            TimeoutError,
-            ConnectionError,
-            exceptions.APIError,
-            exceptions.UnexpectedError,
-        ) as err:
-            raise UpdateFailed(
-                _describe_api_error(err),
-                retry_after=_retry_after_for_error(err),
-            ) from err
+            try:
+                if self.data is None:
+                    devices = await self.client.get_devices()
+                else:
+                    devices = await self.client.refresh_devices()
+            except exceptions.UnauthorizedError as err:
+                raise ConfigEntryAuthFailed(AUTH_FAILED_MESSAGE) from err
+            except (
+                TimeoutError,
+                ConnectionError,
+                exceptions.APIError,
+                exceptions.UnexpectedError,
+            ) as err:
+                raise UpdateFailed(
+                    _describe_api_error(err),
+                    retry_after=_retry_after_for_error(err),
+                ) from err
 
-        if self._is_stale_snapshot(devices):
-            return self.data or devices
+            if self._is_stale_snapshot(devices):
+                return self.data or devices
 
-        return self._apply_pending_writes(devices)
+            return self._apply_pending_writes(devices)
+        finally:
+            self._refresh_in_progress = False
+
+    async def async_request_refresh(self) -> None:
+        """Request a refresh unless one is already in progress."""
+        if getattr(self, "_refresh_in_progress", False):
+            _LOGGER.debug(
+                "Skipping refresh request because %s refresh is already in progress",
+                DOMAIN,
+            )
+            return
+
+        await super().async_request_refresh()
 
     async def async_set_mode(
         self,
@@ -278,9 +292,7 @@ class DanfossAllyDataUpdateCoordinator(
         if result is False:
             raise HomeAssistantError(error_message)
 
-        # The Danfoss cloud may briefly return stale state immediately after a write.
-        await asyncio.sleep(WRITE_REFRESH_DELAY)
-        await self.async_request_refresh()
+        # Writes rely on optimistic state until the next scheduled poll.
 
     def _async_apply_optimistic_updates(
         self,

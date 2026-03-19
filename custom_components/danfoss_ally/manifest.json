@@ -13,7 +13,7 @@
         "pydanfossally"
     ],
     "requirements": [
-        "pydanfossally==1.0.3"
+        "pydanfossally @ git+https://github.com/MTrab/pydanfossally.git@enhancement/global-api-rate-limit"
     ],
     "version": "2.0.2"
 }
