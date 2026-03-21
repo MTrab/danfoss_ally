@@ -15,8 +15,12 @@ from .const import (
     API_TIMEOUT,
     CONF_KEY,
     CONF_SECRET,
+    DEGRADED_REFRESH_COOLDOWN,
+    DEVICE_DISCOVERY_INTERVAL,
     DOMAIN,
     PLATFORMS,
+    REFRESH_DEVICE_CONCURRENCY,
+    REFRESH_DEVICE_MIN_INTERVAL,
     USER_AGENT_PREFIX,
 )
 from .coordinator import (
@@ -67,6 +71,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> b
     """Set up Danfoss Ally from a config entry."""
     client = DanfossAlly(
         timeout=API_TIMEOUT,
+        refresh_device_concurrency=REFRESH_DEVICE_CONCURRENCY,
+        refresh_device_min_interval=REFRESH_DEVICE_MIN_INTERVAL,
+        device_discovery_interval=DEVICE_DISCOVERY_INTERVAL,
+        degraded_refresh_cooldown=DEGRADED_REFRESH_COOLDOWN,
         user_agent_prefix=USER_AGENT_PREFIX,
     )
 

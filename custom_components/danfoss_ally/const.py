@@ -15,6 +15,10 @@ DEFAULT_NAME = "Danfoss"
 DOMAIN = "danfoss_ally"
 API_TIMEOUT = 30.0
 SCAN_INTERVAL = timedelta(seconds=60)
+REFRESH_DEVICE_CONCURRENCY = 5
+REFRESH_DEVICE_MIN_INTERVAL = 0.10
+DEVICE_DISCOVERY_INTERVAL = 600.0
+DEGRADED_REFRESH_COOLDOWN = 600.0
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -43,7 +47,7 @@ def _load_integration_version() -> str:
     try:
         with manifest_path.open(encoding="utf-8") as manifest_file:
             return str(json.load(manifest_file)["version"])
-    except (OSError, KeyError, TypeError, ValueError):
+    except OSError, KeyError, TypeError, ValueError:
         return "unknown"
 
 
