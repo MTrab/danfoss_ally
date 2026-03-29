@@ -13,7 +13,7 @@
         "pydanfossally"
     ],
     "requirements": [
-        "pydanfossally==1.1.0"
+        "pydanfossally@git+https://github.com/MTrab/pydanfossally.git@feature/hot-refresh-opdeling"
     ],
     "version": "2.0.4"
 }
