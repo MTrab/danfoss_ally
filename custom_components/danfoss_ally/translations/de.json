@@ -96,6 +96,23 @@
         }
       }
     },
+    "number": {
+      "upper_temp": {
+        "name": "Obere Temperatur"
+      },
+      "lower_temp": {
+        "name": "Untere Temperatur"
+      },
+      "at_home_setting": {
+        "name": "Zuhause-Temperatur"
+      },
+      "leaving_home_setting": {
+        "name": "Abwesend-Temperatur"
+      },
+      "pause_setting": {
+        "name": "Pause-Temperatur"
+      }
+    },
     "select": {
       "heating_control_scaling": {
         "name": "Skalierung der Heizungsregelung",

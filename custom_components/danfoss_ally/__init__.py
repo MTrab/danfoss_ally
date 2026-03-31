@@ -15,9 +15,8 @@ from .const import (
     API_TIMEOUT,
     CONF_KEY,
     CONF_SECRET,
-    DEGRADED_REFRESH_COOLDOWN,
-    DEVICE_DISCOVERY_INTERVAL,
     DOMAIN,
+    HOT_REFRESH_TIMEOUT,
     PLATFORMS,
     REFRESH_DEVICE_CONCURRENCY,
     REFRESH_DEVICE_MIN_INTERVAL,
@@ -73,8 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> b
         timeout=API_TIMEOUT,
         refresh_device_concurrency=REFRESH_DEVICE_CONCURRENCY,
         refresh_device_min_interval=REFRESH_DEVICE_MIN_INTERVAL,
-        device_discovery_interval=DEVICE_DISCOVERY_INTERVAL,
-        degraded_refresh_cooldown=DEGRADED_REFRESH_COOLDOWN,
+        hot_refresh_timeout=HOT_REFRESH_TIMEOUT,
         user_agent_prefix=USER_AGENT_PREFIX,
     )
 

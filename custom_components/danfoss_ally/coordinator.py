@@ -233,6 +233,83 @@ class DanfossAllyDataUpdateCoordinator(
             error_message=f"Failed to set external temperature for {device_id}",
         )
 
+    async def async_set_upper_temp(
+        self,
+        device_id: str,
+        temperature: float,
+        *,
+        optimistic_updates: dict[str, Any] | None = None,
+    ) -> None:
+        """Write the upper temperature limit and refresh state."""
+        await self._async_run_write(
+            device_id,
+            self.client.set_upper_temp(device_id, temperature),
+            optimistic_updates=optimistic_updates,
+            error_message=f"Failed to set upper temperature for {device_id}",
+        )
+
+    async def async_set_lower_temp(
+        self,
+        device_id: str,
+        temperature: float,
+        *,
+        optimistic_updates: dict[str, Any] | None = None,
+    ) -> None:
+        """Write the lower temperature limit and refresh state."""
+        await self._async_run_write(
+            device_id,
+            self.client.set_lower_temp(device_id, temperature),
+            optimistic_updates=optimistic_updates,
+            error_message=f"Failed to set lower temperature for {device_id}",
+        )
+
+    async def async_set_at_home_setting(
+        self,
+        device_id: str,
+        temperature: float,
+        *,
+        optimistic_updates: dict[str, Any] | None = None,
+    ) -> None:
+        """Write the at-home setpoint and refresh state."""
+        await self._async_run_write(
+            device_id,
+            self.client.set_at_home_setting(device_id, temperature),
+            optimistic_updates=optimistic_updates,
+            error_message=f"Failed to set at-home temperature for {device_id}",
+        )
+
+    async def async_set_leaving_home_setting(
+        self,
+        device_id: str,
+        temperature: float,
+        *,
+        optimistic_updates: dict[str, Any] | None = None,
+    ) -> None:
+        """Write the leaving-home setpoint and refresh state."""
+        await self._async_run_write(
+            device_id,
+            self.client.set_leaving_home_setting(device_id, temperature),
+            optimistic_updates=optimistic_updates,
+            error_message=f"Failed to set leaving-home temperature for {device_id}",
+        )
+
+    async def async_set_pause_setting(
+        self,
+        device_id: str,
+        temperature: float,
+        *,
+        optimistic_updates: dict[str, Any] | None = None,
+    ) -> None:
+        """Write the pause setpoint and refresh state."""
+        await self._async_run_write(
+            device_id,
+            # TODO: Switch to pydanfossally.set_pause_setting() when bumping to
+            # pydanfossally v1.3.0+.
+            self.client.set_temperature_for_mode(device_id, temperature, "pause"),
+            optimistic_updates=optimistic_updates,
+            error_message=f"Failed to set pause temperature for {device_id}",
+        )
+
     async def async_set_radiator_covered(
         self,
         device_id: str,
