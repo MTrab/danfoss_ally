@@ -30,15 +30,8 @@ PLATFORMS: list[Platform] = [
     Platform.SELECT,
 ]
 
-PRESET_MANUAL = "manual"
 PRESET_PAUSE = "pause"
-PRESET_HOLIDAY_AWAY = "holiday_away"
-PRESET_HOLIDAY_HOME = "holiday_home"
-
-LEGACY_PRESET_ALIASES = {
-    "holiday": PRESET_HOLIDAY_AWAY,
-    "holiday_sat": PRESET_HOLIDAY_HOME,
-}
+PRESET_HOLIDAY = "holiday"
 
 ACTION_TYPE_SET_PRESET_TEMPERATURE = "set_preset_temperature"
 

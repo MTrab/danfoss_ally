@@ -27,14 +27,10 @@ set_preset_temperature:
               value: "home"
             - label: "Away"
               value: "away"
-            - label: "Manual"
-              value: "manual"
             - label: "Pause"
               value: "pause"
-            - label: "Holiday (Home)"
-              value: "holiday_home"
-            - label: "Holiday (Away)"
-              value: "holiday_away"
+            - label: "Holiday"
+              value: "holiday"
 
 set_window_state_open:
   name: Set window open state

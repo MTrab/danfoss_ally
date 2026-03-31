@@ -22,10 +22,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, entity_platform
 
 from .const import (
-    LEGACY_PRESET_ALIASES,
-    PRESET_HOLIDAY_AWAY,
-    PRESET_HOLIDAY_HOME,
-    PRESET_MANUAL,
+    PRESET_HOLIDAY,
     PRESET_PAUSE,
 )
 from .coordinator import DanfossConfigEntry
@@ -40,9 +37,7 @@ PRESET_TO_MODE = {
     PRESET_HOME: "at_home",
     PRESET_AWAY: "leaving_home",
     PRESET_PAUSE: "pause",
-    PRESET_MANUAL: "manual",
-    PRESET_HOLIDAY_HOME: "holiday_sat",
-    PRESET_HOLIDAY_AWAY: "holiday",
+    PRESET_HOLIDAY: "holiday",
 }
 
 MODE_TO_PRESET = {value: key for key, value in PRESET_TO_MODE.items()}
@@ -121,9 +116,7 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
             PRESET_HOME,
             PRESET_AWAY,
             PRESET_PAUSE,
-            PRESET_MANUAL,
-            PRESET_HOLIDAY_HOME,
-            PRESET_HOLIDAY_AWAY,
+            PRESET_HOLIDAY,
         ]
 
     @property
@@ -160,7 +153,7 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
         work_state = self.device_value("work_state")
 
         if self._is_icon_device:
-            if mode in {"at_home", "leaving_home", "holiday_sat", "holiday", "pause"}:
+            if mode in {"at_home", "leaving_home", "holiday", "pause"}:
                 return HVACMode.AUTO
             if work_state in {"Heat", "heat_active"}:
                 if self.device_value("manual_mode_fast") == self.device_value(
@@ -176,7 +169,7 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
                 return HVACMode.COOL
             return HVACMode.AUTO
 
-        if mode in {"at_home", "leaving_home", "holiday_sat"}:
+        if mode in {"at_home", "leaving_home"}:
             return HVACMode.AUTO
         if mode in {"manual", "pause", "holiday"}:
             return HVACMode.HEAT
@@ -416,8 +409,7 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
         }.issubset(self.device)
 
     def _normalize_preset_mode(self, preset_mode: str) -> str:
-        """Normalize legacy preset aliases to the new tokens."""
-        preset_mode = LEGACY_PRESET_ALIASES.get(preset_mode, preset_mode)
+        """Validate supported preset names."""
         if preset_mode not in PRESET_TO_MODE:
             raise ValueError(f"Unsupported preset mode: {preset_mode}")
         return preset_mode
@@ -460,8 +452,6 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
             return "manual_mode_fast"
         if mode == "holiday":
             return "holiday_setting"
-        if mode == "holiday_sat":
-            return "at_home_setting"
         return "manual_mode_fast"
 
     def _get_setpoint_for_mode(self, mode: str | None) -> float | None:

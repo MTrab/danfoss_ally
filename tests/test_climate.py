@@ -6,6 +6,7 @@ import pytest
 from homeassistant.components.climate.const import PRESET_HOME
 
 from custom_components.danfoss_ally.climate import DanfossAllyClimate
+from custom_components.danfoss_ally.const import PRESET_HOLIDAY, PRESET_PAUSE
 
 
 class FakeCoordinator:
@@ -161,6 +162,30 @@ async def test_set_preset_temperature_switches_to_requested_schedule_mode() -> N
             {"mode": "at_home", "at_home_setting": 19.0},
         ),
     ]
+
+
+def test_preset_modes_only_expose_supported_api_presets() -> None:
+    """Only real API-backed presets should be exposed."""
+    coordinator = FakeCoordinator({"device-1": make_device(mode="manual")})
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.preset_modes == [PRESET_HOME, "away", PRESET_PAUSE, PRESET_HOLIDAY]
+
+
+def test_manual_mode_has_no_preset() -> None:
+    """Manual is a mode, not a preset."""
+    coordinator = FakeCoordinator({"device-1": make_device(mode="manual")})
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.preset_mode is None
+
+
+def test_holiday_mode_maps_to_holiday_preset() -> None:
+    """Holiday should be exposed as a single preset."""
+    coordinator = FakeCoordinator({"device-1": make_device(mode="holiday")})
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.preset_mode == PRESET_HOLIDAY
 
 
 def test_current_temperature_prefers_external_sensor_when_radiator_is_covered() -> None:
