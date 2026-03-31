@@ -1,19 +1,13 @@
 {
     "domain": "danfoss_ally",
     "name": "Danfoss Ally",
-    "codeowners": [
-        "@MTrab"
-    ],
+    "codeowners": ["@MTrab"],
     "config_flow": true,
     "documentation": "https://github.com/MTrab/danfoss_ally/blob/master/README.md",
     "integration_type": "device",
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/MTrab/danfoss_ally/issues",
-    "loggers": [
-        "pydanfossally"
-    ],
-    "requirements": [
-        "pydanfossally@git+https://github.com/MTrab/pydanfossally.git@feature/hot-refresh-opdeling"
-    ],
-    "version": "2.0.4"
+    "loggers": ["pydanfossally"],
+    "requirements": ["pydanfossally==1.2.0"],
+    "version": "2.0.4",
 }
