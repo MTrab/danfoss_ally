@@ -189,22 +189,26 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
         work_state = self.device_value("work_state")
         valve_opening = self.device_value("valve_opening", "valveOpening")
 
-        if output_status is not None:
-            if not output_status:
-                return HVACAction.IDLE
-            if work_state in {"Cool", "cool_active"}:
-                return HVACAction.COOLING
+        if work_state in {"NoHeat", "idle"}:
+            return HVACAction.IDLE
+        if work_state in {"Cool", "cool_active"}:
+            return HVACAction.COOLING
+        if work_state in {"Heat", "heat_active"}:
+            if valve_opening is not None:
+                return (
+                    HVACAction.HEATING if float(valve_opening) > 1 else HVACAction.IDLE
+                )
             return HVACAction.HEATING
+
+        if output_status is not None and not output_status:
+            return HVACAction.IDLE
 
         if valve_opening is not None:
             return HVACAction.HEATING if float(valve_opening) > 1 else HVACAction.IDLE
 
-        if work_state in {"Heat", "heat_active"}:
-            return HVACAction.HEATING
-        if work_state in {"Cool", "cool_active"}:
-            return HVACAction.COOLING
-        if work_state in {"NoHeat", "idle"}:
-            return HVACAction.IDLE
+        if output_status is not None:
+            return HVACAction.HEATING if output_status else HVACAction.IDLE
+
         return None
 
     @property
