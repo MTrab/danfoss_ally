@@ -96,6 +96,23 @@
         }
       }
     },
+    "number": {
+      "upper_temp": {
+        "name": "Upper temperature"
+      },
+      "lower_temp": {
+        "name": "Lower temperature"
+      },
+      "at_home_setting": {
+        "name": "At-home temperature"
+      },
+      "leaving_home_setting": {
+        "name": "Leaving-home temperature"
+      },
+      "pause_setting": {
+        "name": "Pause temperature"
+      }
+    },
     "select": {
       "heating_control_scaling": {
         "name": "Heating control scaling",
