@@ -1,7 +1,27 @@
 {
-    "services": {
-      "set_preset_temperature": "mdi:thermometer",
-      "set_window_state_open": "mdi:window-open",
-      "set_external_temperature": "mdi:home-thermometer"
+  "entity": {
+    "climate": {
+      "thermostat": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "holiday": "mdi:palm-tree",
+              "pause": "mdi:pause-circle-outline"
+            }
+          }
+        }
+      }
+    }
+  },
+  "services": {
+    "set_preset_temperature": {
+      "service": "mdi:thermometer"
+    },
+    "set_window_state_open": {
+      "service": "mdi:window-open"
+    },
+    "set_external_temperature": {
+      "service": "mdi:home-thermometer"
     }
   }
+}

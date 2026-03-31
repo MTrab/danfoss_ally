@@ -86,10 +86,8 @@
           "preset_mode": {
             "state": {
               "away": "Væk",
-              "holiday_away": "Ferie (væk)",
-              "holiday_home": "Ferie (hjemme)",
+              "holiday": "Ferie",
               "home": "Hjemme",
-              "manual": "Manuel",
               "pause": "Pause"
             }
           }

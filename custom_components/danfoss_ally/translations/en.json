@@ -86,10 +86,8 @@
           "preset_mode": {
             "state": {
               "away": "Away",
-              "holiday_away": "Holiday (Away)",
-              "holiday_home": "Holiday (Home)",
+              "holiday": "Holiday",
               "home": "Home",
-              "manual": "Manual",
               "pause": "Pause"
             }
           }

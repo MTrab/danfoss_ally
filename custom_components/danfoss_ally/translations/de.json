@@ -86,10 +86,8 @@
           "preset_mode": {
             "state": {
               "away": "Abwesend",
-              "holiday_away": "Urlaub (abwesend)",
-              "holiday_home": "Urlaub (zuhause)",
+              "holiday": "Urlaub",
               "home": "Zuhause",
-              "manual": "Manuell",
               "pause": "Pause"
             }
           }
