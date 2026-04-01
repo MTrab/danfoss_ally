@@ -303,9 +303,7 @@ class DanfossAllyDataUpdateCoordinator(
         """Write the pause setpoint and refresh state."""
         await self._async_run_write(
             device_id,
-            # TODO: Switch to pydanfossally.set_pause_setting() when bumping to
-            # pydanfossally v1.3.0+.
-            self.client.set_temperature_for_mode(device_id, temperature, "pause"),
+            self.client.set_pause_setting(device_id, temperature),
             optimistic_updates=optimistic_updates,
             error_message=f"Failed to set pause temperature for {device_id}",
         )

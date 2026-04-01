@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -251,6 +251,32 @@ async def test_run_write_does_not_request_refresh_after_success() -> None:
     )
 
     coordinator.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_async_set_pause_setting_uses_dedicated_client_helper() -> None:
+    """Pause writes should call the specialized API helper."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    pause_call = object()
+    coordinator.client = Mock()
+    coordinator.client.set_pause_setting = Mock(return_value=pause_call)
+    coordinator.client.set_temperature_for_mode = Mock()
+    coordinator._async_run_write = AsyncMock()
+
+    await coordinator.async_set_pause_setting(
+        "device-1",
+        11.5,
+        optimistic_updates={"pause_setting": 11.5},
+    )
+
+    coordinator.client.set_pause_setting.assert_called_once_with("device-1", 11.5)
+    coordinator.client.set_temperature_for_mode.assert_not_called()
+    coordinator._async_run_write.assert_awaited_once_with(
+        "device-1",
+        pause_call,
+        optimistic_updates={"pause_setting": 11.5},
+        error_message="Failed to set pause temperature for device-1",
+    )
 
 
 @pytest.mark.asyncio

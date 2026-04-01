@@ -135,7 +135,7 @@ async def test_leaving_home_setting_uses_dedicated_helper() -> None:
 
 @pytest.mark.asyncio
 async def test_pause_setting_uses_pause_helper() -> None:
-    """Pause setpoint should route to the pause fallback helper."""
+    """Pause setpoint should route to the dedicated pause helper."""
     coordinator = FakeCoordinator({"device-1": make_device()})
     entity = make_number(coordinator, "pause_setting")
 
