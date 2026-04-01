@@ -149,7 +149,7 @@ class DanfossAllySensor(DanfossAllyEntity, SensorEntity):
         """Return the current sensor value."""
         try:
             return self.entity_description.value_fn(self.device)
-        except (KeyError, TypeError):
+        except KeyError, TypeError:
             return None
 
     @property
