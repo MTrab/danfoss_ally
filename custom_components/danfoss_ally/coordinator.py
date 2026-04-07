@@ -364,6 +364,8 @@ class DanfossAllyDataUpdateCoordinator(
         """Return entity IDs that can provide a temperature value."""
         options: list[str] = []
         for state in self.hass.states.async_all():
+            if not self._is_temperature_entity(state):
+                continue
             if self._extract_temperature_celsius(state) is None:
                 continue
             options.append(state.entity_id)
@@ -599,6 +601,24 @@ class DanfossAllyDataUpdateCoordinator(
     async def async_unload_external_temp_listeners(self) -> None:
         """Public method to unload listeners."""
         await self._async_unload_external_temp_listeners()
+
+    def _is_temperature_entity(self, state: Any) -> bool:
+        """Return whether an entity should be offered as a temperature source."""
+        entity_id = getattr(state, "entity_id", "")
+        if not entity_id or "." not in entity_id:
+            return False
+
+        domain = entity_id.split(".", 1)[0]
+        device_class = state.attributes.get("device_class")
+        unit = state.attributes.get("unit_of_measurement")
+
+        if device_class == "temperature":
+            return True
+
+        if unit in {"°C", "°F", "K"}:
+            return True
+
+        return domain == "climate" and state.attributes.get("current_temperature") is not None
 
     def _extract_temperature_celsius(self, state: Any) -> float | None:
         """Extract a temperature value from a state object."""
