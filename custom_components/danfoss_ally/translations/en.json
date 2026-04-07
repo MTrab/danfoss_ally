@@ -161,5 +161,30 @@
         "name": "Heat available"
       }
     }
+  },
+  "options": {
+    "abort": {
+      "no_devices": "No thermostats were found.",
+      "external_sensor_configured": "External temperature sensor has been configured."
+    },
+    "error": {
+      "no_entities": "No entities with a numeric state were found."
+    },
+    "step": {
+      "configure_devices": {
+        "title": "Configure external temperature sensor",
+        "description": "Select the thermostat you want to configure an external temperature sensor for.",
+        "data": {
+          "device_id": "Thermostat"
+        }
+      },
+      "configure_device_sensor": {
+        "title": "Select temperature sensor",
+        "description": "Select the temperature sensor entity to use as the external reading for **{device}**. Choose '— ingen sensor —' to disable.",
+        "data": {
+          "entity_id": "Temperature sensor entity"
+        }
+      }
+    }
   }
 }
