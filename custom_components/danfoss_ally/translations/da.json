@@ -119,6 +119,12 @@
           "quick": "Hurtig (5 min)",
           "slow": "Langsom (80 min)"
         }
+      },
+      "external_temperature_sensor_source": {
+        "name": "Ekstern temperaturkilde",
+        "state": {
+          "disabled": "Deaktiveret"
+        }
       }
     },
     "sensor": {
@@ -159,31 +165,6 @@
       },
       "heat_available": {
         "name": "Varme tilgængelig"
-      }
-    }
-  },
-  "options": {
-    "abort": {
-      "no_devices": "Ingen termostater blev fundet.",
-      "external_sensor_configured": "Ekstern temperaturfølger er konfigureret."
-    },
-    "error": {
-      "no_entities": "Ingen enheder med en numerisk tilstand blev fundet."
-    },
-    "step": {
-      "configure_devices": {
-        "title": "Konfigurer ekstern temperaturfølger",
-        "description": "Vælg den termostat du vil konfigurere en ekstern temperaturfølger for.",
-        "data": {
-          "device_id": "Termostat"
-        }
-      },
-      "configure_device_sensor": {
-        "title": "Vælg temperaturfølger",
-        "description": "Vælg den enhed der skal bruges som ekstern temperaturmåling for **{device}**. Vælg '— ingen sensor —' for at deaktivere.",
-        "data": {
-          "entity_id": "Temperaturfølger enhed"
-        }
       }
     }
   }

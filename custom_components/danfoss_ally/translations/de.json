@@ -119,6 +119,12 @@
           "quick": "Schnell (5 Min.)",
           "slow": "Langsam (80 Min.)"
         }
+      },
+      "external_temperature_sensor_source": {
+        "name": "Externe Temperaturquelle",
+        "state": {
+          "disabled": "Deaktiviert"
+        }
       }
     },
     "sensor": {
@@ -159,31 +165,6 @@
       },
       "heat_available": {
         "name": "Wärme verfügbar"
-      }
-    }
-  },
-  "options": {
-    "abort": {
-      "no_devices": "Keine Thermostate gefunden.",
-      "external_sensor_configured": "Externer Temperatursensor wurde konfiguriert."
-    },
-    "error": {
-      "no_entities": "Keine Entitäten mit einem numerischen Zustand gefunden."
-    },
-    "step": {
-      "configure_devices": {
-        "title": "Externen Temperatursensor konfigurieren",
-        "description": "Wählen Sie den Thermostat, für den Sie einen externen Temperatursensor konfigurieren möchten.",
-        "data": {
-          "device_id": "Thermostat"
-        }
-      },
-      "configure_device_sensor": {
-        "title": "Temperatursensor auswählen",
-        "description": "Wählen Sie die Entität, die als externe Temperaturmessung für **{device}** verwendet werden soll. Wählen Sie '— ingen sensor —' zum Deaktivieren.",
-        "data": {
-          "entity_id": "Temperatursensor-Entität"
-        }
       }
     }
   }

@@ -15,7 +15,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pydanfossally import DanfossAlly, exceptions
 
-from .const import DOMAIN, SCAN_INTERVAL
+from .const import CONF_EXTERNAL_SENSORS, DOMAIN, SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 PENDING_WRITE_TIMEOUT = 60.0
@@ -354,18 +354,60 @@ class DanfossAllyDataUpdateCoordinator(
         """Return configured external sensor entity IDs by device ID."""
         if self.config_entry is None:
             return {}
-        return self.config_entry.data.get("external_sensors", {})
+        return self.config_entry.data.get(CONF_EXTERNAL_SENSORS, {})
+
+    def get_external_sensor_entity_id(self, device_id: str) -> str | None:
+        """Return configured external sensor entity ID for one device."""
+        return self.external_sensors_config.get(device_id)
+
+    def get_temperature_entity_options(self) -> list[str]:
+        """Return entity IDs that can provide a temperature value."""
+        options: list[str] = []
+        for state in self.hass.states.async_all():
+            if self._extract_temperature_celsius(state) is None:
+                continue
+            options.append(state.entity_id)
+
+        options.sort()
+        return options
+
+    async def async_set_external_sensor_entity(
+        self,
+        device_id: str,
+        entity_id: str | None,
+    ) -> None:
+        """Persist the external sensor mapping and apply runtime listeners."""
+        current_map = dict(self.external_sensors_config)
+
+        if entity_id:
+            current_map[device_id] = entity_id
+        else:
+            current_map.pop(device_id, None)
+
+        self.hass.config_entries.async_update_entry(
+            self.config_entry,
+            data={
+                **self.config_entry.data,
+                CONF_EXTERNAL_SENSORS: current_map,
+            },
+        )
+
+        if entity_id:
+            await self.async_setup_external_temp_listeners()
+            await self._async_handle_external_temp_change(device_id, "", entity_id)
+            return
+
+        await self.async_disable_external_temperature(device_id)
 
     async def async_setup_external_temp_listeners(self) -> None:
         """Setup state change listeners for all configured external temperature sensors."""
-        from .const import CONF_ENTITY_ID, CONF_EXTERNAL_SENSORS
         from homeassistant.core import callback
         from homeassistant.helpers.event import async_track_state_change
 
         # Clear any existing listeners
         await self._async_unload_external_temp_listeners()
 
-        external_sensors = self.config_entry.data.get(CONF_EXTERNAL_SENSORS, {})
+        external_sensors = self.external_sensors_config
         if not external_sensors:
             return
 
@@ -404,6 +446,9 @@ class DanfossAllyDataUpdateCoordinator(
                 unsub_state_listener=unsub,
             )
             _LOGGER.debug("External temp listener subscribed for device %s to entity %s", device_id, entity_id)
+            self.hass.async_create_task(
+                self._async_handle_external_temp_change(device_id, "", entity_id)
+            )
 
     async def _async_unload_external_temp_listeners(self) -> None:
         """Unsubscribe from all external temperature state listeners."""
@@ -450,9 +495,8 @@ class DanfossAllyDataUpdateCoordinator(
                 )
                 return
 
-            try:
-                temp_celsius = float(state.state)
-            except (ValueError, TypeError):
+            temp_celsius = self._extract_temperature_celsius(state)
+            if temp_celsius is None:
                 _LOGGER.warning(
                     "External temp entity %s has invalid state value: %s",
                     entity_id,
@@ -555,6 +599,25 @@ class DanfossAllyDataUpdateCoordinator(
     async def async_unload_external_temp_listeners(self) -> None:
         """Public method to unload listeners."""
         await self._async_unload_external_temp_listeners()
+
+    def _extract_temperature_celsius(self, state: Any) -> float | None:
+        """Extract a temperature value from a state object."""
+        if state is None:
+            return None
+
+        try:
+            return float(state.state)
+        except (ValueError, TypeError):
+            pass
+
+        current_temperature = state.attributes.get("current_temperature")
+        if current_temperature is None:
+            return None
+
+        try:
+            return float(current_temperature)
+        except (ValueError, TypeError):
+            return None
 
     async def _async_run_write(
         self,
