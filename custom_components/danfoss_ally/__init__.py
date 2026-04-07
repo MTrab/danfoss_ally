@@ -127,6 +127,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> b
         raise
 
     entry.runtime_data = DanfossAllyRuntimeData(client=client, coordinator=coordinator)
+    
+    # Setup external temperature listeners
+    await coordinator.async_setup_external_temp_listeners()
+    
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -150,6 +154,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: DanfossConfigEntry) -> bool:
     """Unload a config entry."""
+    # Cleanup external temperature listeners
+    await entry.runtime_data.coordinator.async_unload_external_temp_listeners()
+    
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         await entry.runtime_data.client.aclose()
