@@ -8,6 +8,7 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
@@ -172,10 +173,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_abort(reason="already_configured")
         return None
 
-
-ConfigFlow.async_get_options_flow = staticmethod(  # type: ignore[assignment]
-    lambda config_entry: OptionsFlowHandler(config_entry)
-)
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> OptionsFlowHandler:
+        """Return the options flow handler."""
+        return OptionsFlowHandler()
 
 
 class CannotConnect(HomeAssistantError):
