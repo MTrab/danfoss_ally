@@ -14,6 +14,7 @@ class FakeCoordinator:
         self.data = data
         self.command_calls: list[tuple[str, list[tuple[str, object]], dict | None]] = []
         self.radiator_covered_calls: list[tuple[str, bool, dict | None]] = []
+        self._window_sensor_entity_id: str | None = None
 
     async def async_send_commands(
         self, device_id, commands, *, optimistic_updates=None
@@ -30,6 +31,9 @@ class FakeCoordinator:
     ):
         self.radiator_covered_calls.append((device_id, covered, optimistic_updates))
         self.data[device_id] = {**self.data[device_id], **(optimistic_updates or {})}
+
+    def get_window_sensor_entity_id(self, device_id):
+        return self._window_sensor_entity_id
 
 
 def make_device(**overrides):
@@ -101,3 +105,12 @@ async def test_other_switches_keep_generic_command_flow() -> None:
     assert coordinator.command_calls == [
         ("device-1", [("window_toggle", True)], {"window_toggle": True})
     ]
+
+
+def test_window_toggle_becomes_unavailable_when_window_source_is_configured() -> None:
+    """Native window detection switch should become unavailable when HA window source is used."""
+    coordinator = FakeCoordinator({"device-1": make_device(window_toggle=False)})
+    coordinator._window_sensor_entity_id = "binary_sensor.window"
+    entity = make_switch(coordinator, "window_toggle")
+
+    assert entity.available is False

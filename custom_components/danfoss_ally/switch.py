@@ -99,6 +99,17 @@ class DanfossAllySwitch(DanfossAllyEntity, SwitchEntity):
         self._attr_unique_id = f"{description.unique_prefix}_{device_id}_ally"
 
     @property
+    def available(self) -> bool:
+        """Return whether the switch should be available."""
+        if (
+            self.entity_description.key == "window_toggle"
+            and self.uses_window_sensor_source()
+        ):
+            return False
+
+        return super().available
+
+    @property
     def is_on(self) -> bool:
         """Return the current switch state."""
         return bool(self.device.get(self.entity_description.key))

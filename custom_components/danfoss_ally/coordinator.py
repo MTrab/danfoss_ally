@@ -20,7 +20,6 @@ from homeassistant.const import (
 )
 from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pydanfossally import DanfossAlly, exceptions
@@ -488,10 +487,6 @@ class DanfossAllyDataUpdateCoordinator(
                 CONF_WINDOW_SENSORS: current_map,
             },
         )
-        self._async_update_window_feature_entity_registry(
-            device_id,
-            entity_id is not None,
-        )
 
         if entity_id:
             await self.async_setup_window_sensor_listeners()
@@ -499,40 +494,6 @@ class DanfossAllyDataUpdateCoordinator(
             return
 
         await self.async_disable_window_sensor(device_id)
-
-    def _async_update_window_feature_entity_registry(
-        self,
-        device_id: str,
-        feature_enabled: bool,
-    ) -> None:
-        """Disable or re-enable native open-window entities for one thermostat."""
-        registry = er.async_get(self.hass)
-
-        for domain, unique_id in (
-            ("binary_sensor", f"open window_{device_id}_ally"),
-            ("switch", f"{{}} open window detection_{device_id}_ally"),
-        ):
-            entity_id = registry.async_get_entity_id(domain, DOMAIN, unique_id)
-            if entity_id is None:
-                continue
-
-            entry = registry.async_get(entity_id)
-            if entry is None:
-                continue
-
-            if feature_enabled:
-                if entry.disabled_by is None:
-                    registry.async_update_entity(
-                        entity_id,
-                        disabled_by=er.RegistryEntryDisabler.INTEGRATION,
-                    )
-                continue
-
-            if entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION:
-                registry.async_update_entity(
-                    entity_id,
-                    disabled_by=None,
-                )
 
     async def async_setup_external_temp_listeners(self) -> None:
         """Set up state change listeners for all configured external temperature sensors."""

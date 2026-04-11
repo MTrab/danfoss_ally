@@ -168,6 +168,17 @@ class DanfossAllyBinarySensor(DanfossAllyEntity, BinarySensorEntity):
         self._attr_unique_id = f"{description.unique_prefix}_{device_id}_ally"
 
     @property
+    def available(self) -> bool:
+        """Return whether the binary sensor should be available."""
+        if (
+            self.entity_description.key == "open_window"
+            and self.uses_window_sensor_source()
+        ):
+            return False
+
+        return super().available
+
+    @property
     def is_on(self) -> bool:
         """Return the current binary sensor state."""
         try:
