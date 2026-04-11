@@ -125,6 +125,12 @@
         "state": {
           "disabled": "Disabled"
         }
+      },
+      "window_sensor_source": {
+        "name": "Window sensor source",
+        "state": {
+          "disabled": "Disabled"
+        }
       }
     },
     "sensor": {

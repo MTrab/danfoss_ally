@@ -125,6 +125,12 @@
         "state": {
           "disabled": "Deaktiveret"
         }
+      },
+      "window_sensor_source": {
+        "name": "Vinduessensor-kilde",
+        "state": {
+          "disabled": "Deaktiveret"
+        }
       }
     },
     "sensor": {

@@ -88,3 +88,7 @@ class DanfossAllyEntity(CoordinatorEntity[DanfossAllyDataUpdateCoordinator], Ent
         return self._device_id in (self.coordinator.data or {}) and bool(
             self.device.get("online", True)
         )
+
+    def uses_window_sensor_source(self) -> bool:
+        """Return whether the thermostat uses a Home Assistant window sensor source."""
+        return self.coordinator.get_window_sensor_entity_id(self._device_id) is not None

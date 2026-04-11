@@ -10,6 +10,7 @@ from .coordinator import DanfossConfigEntry
 from .entity import DanfossAllyEntity, async_setup_dynamic_platform_entities
 
 EXTERNAL_SENSOR_DISABLED = "disabled"
+WINDOW_SENSOR_DISABLED = "disabled"
 
 HCS_OPTIONS = {
     "quick": 1,
@@ -37,10 +38,16 @@ async def async_setup_entry(
 
 def _build_entities(
     coordinator,
-) -> list[DanfossAllyHcsSelect | DanfossAllyExternalTemperatureSensorSelect]:
+) -> list[
+    DanfossAllyHcsSelect
+    | DanfossAllyExternalTemperatureSensorSelect
+    | DanfossAllyWindowSensorSelect
+]:
     """Build select entities for currently discovered devices."""
     entities: list[
-        DanfossAllyHcsSelect | DanfossAllyExternalTemperatureSensorSelect
+        DanfossAllyHcsSelect
+        | DanfossAllyExternalTemperatureSensorSelect
+        | DanfossAllyWindowSensorSelect
     ] = []
     for device_id, device in (coordinator.data or {}).items():
         if "ctrl_alg" in device:
@@ -50,6 +57,7 @@ def _build_entities(
             entities.append(
                 DanfossAllyExternalTemperatureSensorSelect(coordinator, device_id)
             )
+            entities.append(DanfossAllyWindowSensorSelect(coordinator, device_id))
 
     return entities
 
@@ -128,6 +136,51 @@ class DanfossAllyExternalTemperatureSensorSelect(DanfossAllyEntity, SelectEntity
         """Persist selected source and apply runtime behavior immediately."""
         entity_id = None if option == EXTERNAL_SENSOR_DISABLED else option
         await self.coordinator.async_set_external_sensor_entity(
+            self._device_id,
+            entity_id,
+        )
+        self.async_write_ha_state()
+
+
+class DanfossAllyWindowSensorSelect(DanfossAllyEntity, SelectEntity):
+    """Select which HA entity should pause heating when a window is open."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:window-open-variant"
+    _attr_translation_key = "window_sensor_source"
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator, device_id: str) -> None:
+        """Initialize the window sensor source select."""
+        super().__init__(coordinator, device_id)
+        self._attr_unique_id = f"window_sensor_source_{device_id}_ally"
+
+    @property
+    def current_option(self) -> str | None:
+        """Return currently selected source entity ID."""
+        return (
+            self.coordinator.get_window_sensor_entity_id(self._device_id)
+            or WINDOW_SENSOR_DISABLED
+        )
+
+    @property
+    def options(self) -> list[str]:
+        """Return all selectable window source entities."""
+        options = [
+            WINDOW_SENSOR_DISABLED,
+            *self.coordinator.get_window_entity_options(),
+        ]
+
+        current = self.current_option
+        if current and current not in options:
+            options.append(current)
+
+        return options
+
+    async def async_select_option(self, option: str) -> None:
+        """Persist selected source and apply runtime behavior immediately."""
+        entity_id = None if option == WINDOW_SENSOR_DISABLED else option
+        await self.coordinator.async_set_window_sensor_entity(
             self._device_id,
             entity_id,
         )
