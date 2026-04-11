@@ -39,7 +39,9 @@ def _build_entities(
     coordinator,
 ) -> list[DanfossAllyHcsSelect | DanfossAllyExternalTemperatureSensorSelect]:
     """Build select entities for currently discovered devices."""
-    entities: list[DanfossAllyHcsSelect | DanfossAllyExternalTemperatureSensorSelect] = []
+    entities: list[
+        DanfossAllyHcsSelect | DanfossAllyExternalTemperatureSensorSelect
+    ] = []
     for device_id, device in (coordinator.data or {}).items():
         if "ctrl_alg" in device:
             entities.append(DanfossAllyHcsSelect(coordinator, device_id))
