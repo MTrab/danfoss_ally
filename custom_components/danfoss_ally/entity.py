@@ -92,3 +92,7 @@ class DanfossAllyEntity(CoordinatorEntity[DanfossAllyDataUpdateCoordinator], Ent
     def uses_window_sensor_source(self) -> bool:
         """Return whether the thermostat uses a Home Assistant window sensor source."""
         return self.coordinator.get_window_sensor_entity_id(self._device_id) is not None
+
+    def native_window_detection_enabled(self) -> bool:
+        """Return whether the native thermostat window detection is enabled."""
+        return bool(self.device.get("window_toggle"))

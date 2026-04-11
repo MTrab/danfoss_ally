@@ -19,6 +19,7 @@ from homeassistant.components.climate.const import (
 )
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv, entity_platform
 
 from .const import (
@@ -348,6 +349,11 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
 
     async def async_set_window_state_open(self, **kwargs: Any) -> None:
         """Tell the thermostat whether a window is open."""
+        if not self.native_window_detection_enabled():
+            raise HomeAssistantError(
+                "Window open state can only be set when window open detection is enabled."
+            )
+
         value = "open" if kwargs["window_open"] else "close"
         await self.coordinator.async_send_commands(
             self._device_id,
