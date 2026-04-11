@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from homeassistant.components.climate.const import PRESET_HOME
+from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.danfoss_ally.climate import DanfossAllyClimate
 from custom_components.danfoss_ally.const import PRESET_HOLIDAY, PRESET_PAUSE
@@ -92,6 +93,7 @@ def make_device(**overrides):
         "name": "Living room",
         "model": "Danfoss Ally Thermostat",
         "online": True,
+        "window_toggle": True,
         "mode": "manual",
         "manual_mode_fast": 21.0,
         "at_home_setting": 20.0,
@@ -254,6 +256,33 @@ async def test_set_external_temperature_enables_radiator_covered() -> None:
                 "external_sensor_temperature": 25.0,
             },
         )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_set_window_state_open_requires_window_detection_to_be_enabled() -> None:
+    """Window state writes should fail when native window detection is disabled."""
+    coordinator = FakeCoordinator({"device-1": make_device(window_toggle=False)})
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    with pytest.raises(HomeAssistantError):
+        await entity.async_set_window_state_open(window_open=True)
+
+    assert coordinator.command_calls == []
+
+
+@pytest.mark.asyncio
+async def test_set_window_state_open_sends_command_when_window_detection_is_enabled() -> (
+    None
+):
+    """Window state writes should still work when native window detection is enabled."""
+    coordinator = FakeCoordinator({"device-1": make_device(window_toggle=True)})
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    await entity.async_set_window_state_open(window_open=True)
+
+    assert coordinator.command_calls == [
+        ("device-1", [("window_state_info", "open")], None)
     ]
 
 

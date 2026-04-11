@@ -83,6 +83,8 @@ This feature reduces heating when a window is open. The thermostat can detect th
 - **Open window detection** enables or disables the feature.
 - **Open window** shows whether the thermostat currently considers a window to be open.
 
+When **Open window detection** is turned off, the native **Open window** binary sensor becomes unavailable, and the `Set window open state` service is blocked until the feature is enabled again.
+
 ### Window pause automation
 
 Radiator thermostats can also pause heating from Home Assistant when a selected window sensor, or a Home Assistant group of window sensors, stays open for more than one minute.

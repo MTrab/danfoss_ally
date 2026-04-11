@@ -101,3 +101,24 @@ def test_open_window_binary_sensor_becomes_unavailable_when_window_source_is_con
     entity = DanfossAllyBinarySensor(coordinator, "device-1", description)
 
     assert entity.available is False
+
+
+def test_open_window_binary_sensor_becomes_unavailable_when_window_detection_is_off() -> (
+    None
+):
+    """Native open-window binary sensor should become unavailable when detection is disabled."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": {
+                "name": "Living room",
+                "model": "Danfoss Ally Thermostat",
+                "online": True,
+                "window_open": True,
+                "window_toggle": False,
+            }
+        }
+    )
+    description = next(item for item in BINARY_SENSORS if item.key == "open_window")
+    entity = DanfossAllyBinarySensor(coordinator, "device-1", description)
+
+    assert entity.available is False
