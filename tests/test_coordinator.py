@@ -509,3 +509,19 @@ async def test_setup_window_sensor_listeners_waits_for_hass_started_event() -> N
     assert coordinator.hass.bus.listen_once_calls
     event_type, _callback = coordinator.hass.bus.listen_once_calls[0]
     assert event_type == EVENT_HOMEASSISTANT_STARTED
+
+
+@pytest.mark.asyncio
+async def test_set_window_sensor_entity_updates_runtime_listeners_immediately() -> None:
+    """Changing the window source should notify entities immediately."""
+    coordinator = make_window_coordinator()
+    coordinator.async_update_listeners = Mock()
+    coordinator.async_setup_window_sensor_listeners = AsyncMock()
+    coordinator._async_handle_window_sensor_change = AsyncMock()
+
+    await coordinator.async_set_window_sensor_entity(
+        "device-1",
+        "binary_sensor.window",
+    )
+
+    coordinator.async_update_listeners.assert_called_once()

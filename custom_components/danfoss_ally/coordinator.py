@@ -487,6 +487,7 @@ class DanfossAllyDataUpdateCoordinator(
                 CONF_WINDOW_SENSORS: current_map,
             },
         )
+        self.async_update_listeners()
 
         if entity_id:
             await self.async_setup_window_sensor_listeners()
