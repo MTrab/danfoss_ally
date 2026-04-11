@@ -7,7 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from homeassistant.core import State
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.core import CoreState, State
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pydanfossally import exceptions
@@ -327,10 +328,22 @@ class FakeStates:
         return list(self._states.values())
 
 
+class FakeBus:
+    """Minimal Home Assistant event bus for coordinator tests."""
+
+    def __init__(self) -> None:
+        self.listen_once_calls: list[tuple[str, object]] = []
+
+    def async_listen_once(self, event_type: str, callback) -> Mock:
+        self.listen_once_calls.append((event_type, callback))
+        return Mock()
+
+
 def make_window_coordinator(
     *,
     device: dict | None = None,
     state: State | None = None,
+    hass_state: CoreState = CoreState.running,
 ) -> DanfossAllyDataUpdateCoordinator:
     """Create a small coordinator stub for window pause tests."""
     coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
@@ -346,10 +359,13 @@ def make_window_coordinator(
     coordinator.config_entry = SimpleNamespace(
         data={"window_sensors": {"device-1": "binary_sensor.window"}},
     )
+    bus = FakeBus()
     coordinator.hass = SimpleNamespace(
         states=FakeStates(
             {"binary_sensor.window": state or State("binary_sensor.window", "on")}
         ),
+        state=hass_state,
+        bus=bus,
         config_entries=SimpleNamespace(async_update_entry=Mock()),
         async_create_task=lambda coro: coro,
     )
@@ -476,22 +492,20 @@ async def test_handle_window_sensor_change_schedules_restore_for_current_closed_
 
 
 @pytest.mark.asyncio
-async def test_handle_window_sensor_change_retries_when_sensor_is_unavailable() -> None:
-    """Unavailable sensors should be retried instead of being forgotten."""
-    coordinator = make_window_coordinator(
-        state=State("binary_sensor.window", "unavailable")
-    )
-    coordinator._async_schedule_window_action = Mock()
-    coordinator._async_schedule_window_unavailable_retry = Mock()
+async def test_setup_window_sensor_listeners_waits_for_hass_started_event() -> None:
+    """Initial window evaluation should wait until Home Assistant startup is complete."""
+    coordinator = make_window_coordinator(hass_state=CoreState.starting)
+    coordinator._async_load_window_restore_states = AsyncMock()
+    coordinator._async_unload_window_sensor_listeners = AsyncMock()
+    coordinator._async_handle_window_sensor_change = AsyncMock()
 
-    await coordinator._async_handle_window_sensor_change(
-        "device-1",
-        "binary_sensor.window",
-    )
+    with patch(
+        "homeassistant.helpers.event.async_track_state_change_event",
+        return_value=Mock(),
+    ):
+        await coordinator.async_setup_window_sensor_listeners()
 
-    coordinator._async_schedule_window_action.assert_not_called()
-    coordinator._async_schedule_window_unavailable_retry.assert_called_once_with(
-        "device-1",
-        "binary_sensor.window",
-    )
-    assert coordinator._window_sensor_states["device-1"].pending_open is None
+    coordinator._async_handle_window_sensor_change.assert_not_called()
+    assert coordinator.hass.bus.listen_once_calls
+    event_type, _callback = coordinator.hass.bus.listen_once_calls[0]
+    assert event_type == EVENT_HOMEASSISTANT_STARTED
