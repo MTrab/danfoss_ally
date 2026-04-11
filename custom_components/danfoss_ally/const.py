@@ -10,6 +10,8 @@ from homeassistant.const import Platform
 
 CONF_KEY = "key"
 CONF_SECRET = "secret"
+CONF_EXTERNAL_SENSORS = "external_sensors"
+CONF_ENTITY_ID = "entity_id"
 
 DEFAULT_NAME = "Danfoss"
 DOMAIN = "danfoss_ally"
@@ -42,7 +44,7 @@ def _load_integration_version() -> str:
     try:
         with manifest_path.open(encoding="utf-8") as manifest_file:
             return str(json.load(manifest_file)["version"])
-    except OSError, KeyError, TypeError, ValueError:
+    except (OSError, KeyError, TypeError, ValueError):
         return "unknown"
 
 

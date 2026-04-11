@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable
-from dataclasses import dataclass
 import logging
 import math
 import time
+from collections.abc import Awaitable
+from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -15,7 +15,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pydanfossally import DanfossAlly, exceptions
 
-from .const import DOMAIN, SCAN_INTERVAL
+from .const import CONF_EXTERNAL_SENSORS, DOMAIN, SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 PENDING_WRITE_TIMEOUT = 60.0
@@ -90,6 +90,16 @@ class PendingWrite:
     baseline_response_time: int | None
 
 
+@dataclass(slots=True)
+class ExternalTempState:
+    """Track external temperature state for a device."""
+
+    entity_id: str
+    last_sent_value: float | None  # in Celsius
+    last_sent_at: float  # timestamp
+    unsub_state_listener: Any | None = None
+
+
 DanfossConfigEntry = ConfigEntry
 
 
@@ -114,6 +124,7 @@ class DanfossAllyDataUpdateCoordinator(
         )
         self.client = client
         self._pending_writes: dict[str, PendingWrite] = {}
+        self._external_temp_states: dict[str, ExternalTempState] = {}
         self._refresh_in_progress = False
 
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
@@ -337,6 +348,311 @@ class DanfossAllyDataUpdateCoordinator(
             optimistic_updates=optimistic_updates,
             error_message=f"Failed to send command for {device_id}",
         )
+
+    @property
+    def external_sensors_config(self) -> dict[str, str]:
+        """Return configured external sensor entity IDs by device ID."""
+        if self.config_entry is None:
+            return {}
+        return self.config_entry.data.get(CONF_EXTERNAL_SENSORS, {})
+
+    def get_external_sensor_entity_id(self, device_id: str) -> str | None:
+        """Return configured external sensor entity ID for one device."""
+        return self.external_sensors_config.get(device_id)
+
+    def get_temperature_entity_options(self) -> list[str]:
+        """Return entity IDs that can provide a temperature value."""
+        options: list[str] = []
+        for state in self.hass.states.async_all():
+            if not self._is_temperature_entity(state):
+                continue
+            if self._extract_temperature_celsius(state) is None:
+                continue
+            options.append(state.entity_id)
+
+        options.sort()
+        return options
+
+    async def async_set_external_sensor_entity(
+        self,
+        device_id: str,
+        entity_id: str | None,
+    ) -> None:
+        """Persist the external sensor mapping and apply runtime listeners."""
+        current_map = dict(self.external_sensors_config)
+
+        if entity_id:
+            current_map[device_id] = entity_id
+        else:
+            current_map.pop(device_id, None)
+
+        self.hass.config_entries.async_update_entry(
+            self.config_entry,
+            data={
+                **self.config_entry.data,
+                CONF_EXTERNAL_SENSORS: current_map,
+            },
+        )
+
+        if entity_id:
+            await self.async_setup_external_temp_listeners()
+            await self._async_handle_external_temp_change(device_id, "", entity_id)
+            return
+
+        await self.async_disable_external_temperature(device_id)
+
+    async def async_setup_external_temp_listeners(self) -> None:
+        """Set up state change listeners for all configured external temperature sensors."""
+        from homeassistant.core import callback
+        from homeassistant.helpers.event import async_track_state_change
+
+        # Clear any existing listeners
+        await self._async_unload_external_temp_listeners()
+
+        external_sensors = self.external_sensors_config
+        if not external_sensors:
+            return
+
+        _LOGGER.debug(
+            "Setting up external temperature listeners for devices: %s",
+            list(external_sensors.keys()),
+        )
+
+        for device_id, entity_id in external_sensors.items():
+            if not entity_id:
+                continue
+
+            @callback
+            def handle_state_change(
+                entity_id: str,
+                old_state: Any,
+                new_state: Any,
+                device_id: str = device_id,
+            ) -> None:
+                """Handle external temperature entity state change."""
+                if new_state is None or new_state.state == "unavailable":
+                    return
+                self.hass.async_create_task(
+                    self._async_handle_external_temp_change(
+                        device_id, new_state.state, entity_id
+                    )
+                )
+
+            # Register state listener
+            unsub = async_track_state_change(
+                self.hass,
+                [entity_id],
+                handle_state_change,
+            )
+
+            # Store listener for cleanup
+            self._external_temp_states[device_id] = ExternalTempState(
+                entity_id=entity_id,
+                last_sent_value=None,
+                last_sent_at=0,
+                unsub_state_listener=unsub,
+            )
+            _LOGGER.debug(
+                "External temp listener subscribed for device %s to entity %s",
+                device_id,
+                entity_id,
+            )
+            self.hass.async_create_task(
+                self._async_handle_external_temp_change(device_id, "", entity_id)
+            )
+
+    async def _async_unload_external_temp_listeners(self) -> None:
+        """Unsubscribe from all external temperature state listeners."""
+        for state in self._external_temp_states.values():
+            if state.unsub_state_listener:
+                state.unsub_state_listener()
+        self._external_temp_states.clear()
+
+    async def async_disable_external_temperature(self, device_id: str) -> None:
+        """Send -8000 to disable external temperature on the device and remove listener."""
+        _LOGGER.debug("Disabling external temperature for device %s", device_id)
+
+        # Remove listener for this device only
+        state = self._external_temp_states.pop(device_id, None)
+        if state and state.unsub_state_listener:
+            state.unsub_state_listener()
+
+        # Send -8000 to signal device to disable external temperature
+        try:
+            await self._async_run_write(
+                device_id,
+                self.client.send_command(device_id, [("ext_measured_rs", -8000)]),
+                optimistic_updates=None,
+                error_message=f"Failed to disable external temperature for {device_id}",
+            )
+            _LOGGER.debug("External temperature disabled on device %s", device_id)
+        except HomeAssistantError as err:
+            _LOGGER.warning("Failed to disable external temperature: %s", err)
+
+    async def _async_handle_external_temp_change(
+        self,
+        device_id: str,
+        new_state_str: str,
+        entity_id: str,
+    ) -> None:
+        """Handle external temperature entity state change and send to device if needed."""
+        try:
+            # Get the new state value from Home Assistant
+            state = self.hass.states.get(entity_id)
+            if state is None or state.state == "unavailable":
+                _LOGGER.debug(
+                    "External temp entity %s is unavailable, not sending update",
+                    entity_id,
+                )
+                return
+
+            temp_celsius = self._extract_temperature_celsius(state)
+            if temp_celsius is None:
+                _LOGGER.warning(
+                    "External temp entity %s has invalid state value: %s",
+                    entity_id,
+                    state.state,
+                )
+                return
+
+            # Get current state tracking
+            current_state = self._external_temp_states.get(device_id)
+            if current_state is None:
+                current_state = ExternalTempState(
+                    entity_id=entity_id,
+                    last_sent_value=None,
+                    last_sent_at=0,
+                    unsub_state_listener=None,
+                )
+                self._external_temp_states[device_id] = current_state
+
+            # Check if value has actually changed
+            if current_state.last_sent_value == temp_celsius:
+                _LOGGER.debug(
+                    "External temp for device %s unchanged (%.1f°C), skipping send",
+                    device_id,
+                    temp_celsius,
+                )
+                return
+
+            # Send the temperature
+            await self._async_send_external_temperature(device_id, temp_celsius)
+
+            # Schedule next re-send in 30 minutes if value hasn't changed
+            self._async_schedule_external_temp_resend(device_id, temp_celsius)
+
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.exception("Error handling external temp change: %s", err)
+
+    async def _async_send_external_temperature(
+        self,
+        device_id: str,
+        temp_celsius: float,
+    ) -> None:
+        """Send external temperature to device via API."""
+        # Convert to 0.01°C units (21.0°C → 2100)
+        temp_value = int(round(temp_celsius * 100))
+
+        _LOGGER.debug(
+            "Sending external temperature %.1f°C (value: %d) to device %s",
+            temp_celsius,
+            temp_value,
+            device_id,
+        )
+
+        try:
+            await self._async_run_write(
+                device_id,
+                self.client.send_command(device_id, [("ext_measured_rs", temp_value)]),
+                optimistic_updates=None,
+                error_message=f"Failed to send external temperature to {device_id}",
+            )
+
+            # Update tracking after successful send
+            current_state = self._external_temp_states.get(device_id)
+            if current_state:
+                current_state.last_sent_value = temp_celsius
+                current_state.last_sent_at = time.monotonic()
+
+        except HomeAssistantError as err:
+            _LOGGER.warning("Failed to send external temperature: %s", err)
+
+    def _async_schedule_external_temp_resend(
+        self,
+        device_id: str,
+        temp_celsius: float,
+    ) -> None:
+        """Schedule external temperature re-send in 30 minutes."""
+        from homeassistant.helpers.event import async_call_later
+
+        async def resend_callback(now: Any) -> None:  # now is datetime, not used
+            # Check if still configured
+            if device_id not in self.external_sensors_config:
+                return
+
+            # Check if value has changed
+            current_state = self._external_temp_states.get(device_id)
+            if current_state and current_state.last_sent_value == temp_celsius:
+                _LOGGER.debug(
+                    "Re-sending external temperature %.1f°C to device %s (30-min timer)",
+                    temp_celsius,
+                    device_id,
+                )
+                await self._async_send_external_temperature(device_id, temp_celsius)
+
+        # Schedule for 30 minutes from now
+        async_call_later(
+            self.hass,
+            30 * 60,  # 1800 seconds
+            resend_callback,
+        )
+
+    async def async_unload_external_temp_listeners(self) -> None:
+        """Public method to unload listeners."""
+        await self._async_unload_external_temp_listeners()
+
+    def _is_temperature_entity(self, state: Any) -> bool:
+        """Return whether an entity should be offered as a temperature source."""
+        if state.domain != "sensor":
+            return False
+
+        entity_id = getattr(state, "entity_id", "")
+        if not entity_id or "." not in entity_id:
+            return False
+
+        domain = entity_id.split(".", 1)[0]
+        device_class = state.attributes.get("device_class")
+        unit = state.attributes.get("unit_of_measurement")
+
+        if device_class == "temperature":
+            return True
+
+        if unit in {"°C", "°F", "K"}:
+            return True
+
+        return (
+            domain == "climate"
+            and state.attributes.get("current_temperature") is not None
+        )
+
+    def _extract_temperature_celsius(self, state: Any) -> float | None:
+        """Extract a temperature value from a state object."""
+        if state is None:
+            return None
+
+        try:
+            return float(state.state)
+        except (ValueError, TypeError):
+            pass
+
+        current_temperature = state.attributes.get("current_temperature")
+        if current_temperature is None:
+            return None
+
+        try:
+            return float(current_temperature)
+        except (ValueError, TypeError):
+            return None
 
     async def _async_run_write(
         self,

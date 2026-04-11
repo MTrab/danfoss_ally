@@ -119,6 +119,12 @@
           "quick": "Quick (5 min)",
           "slow": "Slow (80 min)"
         }
+      },
+      "external_temperature_sensor_source": {
+        "name": "External temperature source",
+        "state": {
+          "disabled": "Disabled"
+        }
       }
     },
     "sensor": {

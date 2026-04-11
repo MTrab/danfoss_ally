@@ -9,6 +9,8 @@ from homeassistant.helpers.entity import EntityCategory
 from .coordinator import DanfossConfigEntry
 from .entity import DanfossAllyEntity, async_setup_dynamic_platform_entities
 
+EXTERNAL_SENSOR_DISABLED = "disabled"
+
 HCS_OPTIONS = {
     "quick": 1,
     "moderate": 5,
@@ -33,13 +35,23 @@ async def async_setup_entry(
     async_setup_dynamic_platform_entities(entry, async_add_entities, _build_entities)
 
 
-def _build_entities(coordinator) -> list[DanfossAllyHcsSelect]:
+def _build_entities(
+    coordinator,
+) -> list[DanfossAllyHcsSelect | DanfossAllyExternalTemperatureSensorSelect]:
     """Build select entities for currently discovered devices."""
-    return [
-        DanfossAllyHcsSelect(coordinator, device_id)
-        for device_id, device in (coordinator.data or {}).items()
-        if "ctrl_alg" in device
-    ]
+    entities: list[
+        DanfossAllyHcsSelect | DanfossAllyExternalTemperatureSensorSelect
+    ] = []
+    for device_id, device in (coordinator.data or {}).items():
+        if "ctrl_alg" in device:
+            entities.append(DanfossAllyHcsSelect(coordinator, device_id))
+
+        if device.get("isThermostat"):
+            entities.append(
+                DanfossAllyExternalTemperatureSensorSelect(coordinator, device_id)
+            )
+
+    return entities
 
 
 class DanfossAllyHcsSelect(DanfossAllyEntity, SelectEntity):
@@ -75,3 +87,48 @@ class DanfossAllyHcsSelect(DanfossAllyEntity, SelectEntity):
             [("ctrl_alg", value)],
             optimistic_updates={"ctrl_alg": value},
         )
+
+
+class DanfossAllyExternalTemperatureSensorSelect(DanfossAllyEntity, SelectEntity):
+    """Select which HA entity should provide external room temperature."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:thermometer-lines"
+    _attr_translation_key = "external_temperature_sensor_source"
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator, device_id: str) -> None:
+        """Initialize the external temperature sensor source select."""
+        super().__init__(coordinator, device_id)
+        self._attr_unique_id = f"external_temperature_sensor_source_{device_id}_ally"
+
+    @property
+    def current_option(self) -> str | None:
+        """Return currently selected source entity ID."""
+        return (
+            self.coordinator.get_external_sensor_entity_id(self._device_id)
+            or EXTERNAL_SENSOR_DISABLED
+        )
+
+    @property
+    def options(self) -> list[str]:
+        """Return all selectable temperature source entities."""
+        options = [
+            EXTERNAL_SENSOR_DISABLED,
+            *self.coordinator.get_temperature_entity_options(),
+        ]
+
+        current = self.current_option
+        if current and current not in options:
+            options.append(current)
+
+        return options
+
+    async def async_select_option(self, option: str) -> None:
+        """Persist selected source and apply runtime behavior immediately."""
+        entity_id = None if option == EXTERNAL_SENSOR_DISABLED else option
+        await self.coordinator.async_set_external_sensor_entity(
+            self._device_id,
+            entity_id,
+        )
+        self.async_write_ha_state()

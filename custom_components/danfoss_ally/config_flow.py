@@ -13,7 +13,14 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from pydanfossally import DanfossAlly, exceptions
 
-from .const import API_TIMEOUT, CONF_KEY, CONF_SECRET, DOMAIN, USER_AGENT_PREFIX
+from .const import (
+    API_TIMEOUT,
+    CONF_EXTERNAL_SENSORS,
+    CONF_KEY,
+    CONF_SECRET,
+    DOMAIN,
+    USER_AGENT_PREFIX,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -131,8 +138,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                     if duplicate_abort is not None:
                         return duplicate_abort
+
+                    # Initialize external sensors config
+                    entry_data = {
+                        **user_input,
+                        CONF_EXTERNAL_SENSORS: {},
+                    }
+
                     return self.async_create_entry(
-                        title=validated["title"], data=user_input
+                        title=validated["title"], data=entry_data
                     )
 
                 entry = (

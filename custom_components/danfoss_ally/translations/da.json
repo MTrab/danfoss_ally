@@ -119,6 +119,12 @@
           "quick": "Hurtig (5 min)",
           "slow": "Langsom (80 min)"
         }
+      },
+      "external_temperature_sensor_source": {
+        "name": "Ekstern temperaturkilde",
+        "state": {
+          "disabled": "Deaktiveret"
+        }
       }
     },
     "sensor": {
