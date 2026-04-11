@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable
-from dataclasses import dataclass
 import logging
 import math
 import time
+from collections.abc import Awaitable
+from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -413,7 +413,10 @@ class DanfossAllyDataUpdateCoordinator(
         if not external_sensors:
             return
 
-        _LOGGER.debug("Setting up external temperature listeners for devices: %s", list(external_sensors.keys()))
+        _LOGGER.debug(
+            "Setting up external temperature listeners for devices: %s",
+            list(external_sensors.keys()),
+        )
 
         for device_id, entity_id in external_sensors.items():
             if not entity_id:
@@ -430,7 +433,9 @@ class DanfossAllyDataUpdateCoordinator(
                 if new_state is None or new_state.state == "unavailable":
                     return
                 self.hass.async_create_task(
-                    self._async_handle_external_temp_change(device_id, new_state.state, entity_id)
+                    self._async_handle_external_temp_change(
+                        device_id, new_state.state, entity_id
+                    )
                 )
 
             # Register state listener
@@ -447,7 +452,11 @@ class DanfossAllyDataUpdateCoordinator(
                 last_sent_at=0,
                 unsub_state_listener=unsub,
             )
-            _LOGGER.debug("External temp listener subscribed for device %s to entity %s", device_id, entity_id)
+            _LOGGER.debug(
+                "External temp listener subscribed for device %s to entity %s",
+                device_id,
+                entity_id,
+            )
             self.hass.async_create_task(
                 self._async_handle_external_temp_change(device_id, "", entity_id)
             )
@@ -575,12 +584,12 @@ class DanfossAllyDataUpdateCoordinator(
     ) -> None:
         """Schedule external temperature re-send in 30 minutes."""
         from homeassistant.helpers.event import async_call_later
-        
+
         async def resend_callback(now: Any) -> None:  # now is datetime, not used
             # Check if still configured
             if device_id not in self.external_sensors_config:
                 return
-            
+
             # Check if value has changed
             current_state = self._external_temp_states.get(device_id)
             if current_state and current_state.last_sent_value == temp_celsius:
@@ -604,6 +613,9 @@ class DanfossAllyDataUpdateCoordinator(
 
     def _is_temperature_entity(self, state: Any) -> bool:
         """Return whether an entity should be offered as a temperature source."""
+        if not state.domain == "sensor":
+            return False
+
         entity_id = getattr(state, "entity_id", "")
         if not entity_id or "." not in entity_id:
             return False
@@ -618,7 +630,10 @@ class DanfossAllyDataUpdateCoordinator(
         if unit in {"°C", "°F", "K"}:
             return True
 
-        return domain == "climate" and state.attributes.get("current_temperature") is not None
+        return (
+            domain == "climate"
+            and state.attributes.get("current_temperature") is not None
+        )
 
     def _extract_temperature_celsius(self, state: Any) -> float | None:
         """Extract a temperature value from a state object."""
