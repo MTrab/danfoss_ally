@@ -271,3 +271,66 @@ def test_hvac_action_uses_valve_opening_before_work_state() -> None:
     entity = DanfossAllyClimate(coordinator, "device-1")
 
     assert entity.hvac_action.value == "idle"
+
+
+def test_hvac_action_prefers_no_heat_work_state_over_output_status() -> None:
+    """A NoHeat work_state should not be forced into heating by output_status."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                output_status=True,
+                work_state="NoHeat",
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.hvac_action.value == "idle"
+
+
+def test_hvac_action_uses_heat_work_state_when_valve_opening_missing() -> None:
+    """A Heat work_state should still report heating without valve telemetry."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                output_status=True,
+                work_state="Heat",
+                valve_opening=None,
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.hvac_action.value == "heating"
+
+
+def test_hvac_action_uses_valve_opening_for_heat_work_state() -> None:
+    """Valve opening should confirm active heating when Heat is reported."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                output_status=None,
+                valve_opening=18,
+                work_state="Heat",
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.hvac_action.value == "heating"
+
+
+def test_hvac_action_falls_back_to_output_status_without_work_state() -> None:
+    """Devices without work_state should still use output_status as a fallback."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                output_status=False,
+                work_state=None,
+                valve_opening=None,
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.hvac_action.value == "idle"
