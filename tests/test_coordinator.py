@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
@@ -14,6 +15,7 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from pydanfossally import exceptions
 from custom_components.danfoss_ally.coordinator import (
     CONNECTION_RETRY_AFTER,
+    RATE_LIMIT_ERROR_MESSAGE,
     DanfossAllyDataUpdateCoordinator,
     FORBIDDEN_RETRY_AFTER,
     GENERIC_API_RETRY_AFTER,
@@ -22,7 +24,9 @@ from custom_components.danfoss_ally.coordinator import (
     SERVER_ERROR_RETRY_AFTER,
     TIMEOUT_RETRY_AFTER,
     WindowRestoreState,
+    _CoordinatorLoggerAdapter,
 )
+from custom_components.danfoss_ally.const import DOMAIN
 
 
 def test_apply_pending_writes_overlays_stale_polled_values() -> None:
@@ -313,6 +317,50 @@ async def test_async_request_refresh_calls_super_when_idle() -> None:
         await coordinator.async_request_refresh()
 
     super_request_refresh.assert_awaited_once()
+
+
+def test_runtime_rate_limit_refresh_logs_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Runtime HTTP 429 refresh failures should be warnings, not errors."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator._runtime_refresh_logging = True
+    logger = _CoordinatorLoggerAdapter(logging.getLogger(__name__), coordinator)
+
+    with caplog.at_level(logging.WARNING):
+        logger.error(
+            "Error fetching %s data: %s",
+            DOMAIN,
+            UpdateFailed(RATE_LIMIT_ERROR_MESSAGE),
+        )
+
+    assert (
+        "Error fetching danfoss_ally data: Danfoss Ally API rate limit reached (HTTP 429)."
+        in caplog.text
+    )
+    assert [record.levelno for record in caplog.records] == [logging.WARNING]
+
+
+def test_startup_rate_limit_refresh_logs_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Startup HTTP 429 refresh failures should remain errors."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator._runtime_refresh_logging = False
+    logger = _CoordinatorLoggerAdapter(logging.getLogger(__name__), coordinator)
+
+    with caplog.at_level(logging.ERROR):
+        logger.error(
+            "Error fetching %s data: %s",
+            DOMAIN,
+            UpdateFailed(RATE_LIMIT_ERROR_MESSAGE),
+        )
+
+    assert (
+        "Error fetching danfoss_ally data: Danfoss Ally API rate limit reached (HTTP 429)."
+        in caplog.text
+    )
+    assert [record.levelno for record in caplog.records] == [logging.ERROR]
 
 
 class FakeStates:
