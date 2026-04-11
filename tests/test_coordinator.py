@@ -473,3 +473,25 @@ async def test_handle_window_sensor_change_schedules_restore_for_current_closed_
         False,
     )
     assert coordinator._window_sensor_states["device-1"].pending_open is False
+
+
+@pytest.mark.asyncio
+async def test_handle_window_sensor_change_retries_when_sensor_is_unavailable() -> None:
+    """Unavailable sensors should be retried instead of being forgotten."""
+    coordinator = make_window_coordinator(
+        state=State("binary_sensor.window", "unavailable")
+    )
+    coordinator._async_schedule_window_action = Mock()
+    coordinator._async_schedule_window_unavailable_retry = Mock()
+
+    await coordinator._async_handle_window_sensor_change(
+        "device-1",
+        "binary_sensor.window",
+    )
+
+    coordinator._async_schedule_window_action.assert_not_called()
+    coordinator._async_schedule_window_unavailable_retry.assert_called_once_with(
+        "device-1",
+        "binary_sensor.window",
+    )
+    assert coordinator._window_sensor_states["device-1"].pending_open is None

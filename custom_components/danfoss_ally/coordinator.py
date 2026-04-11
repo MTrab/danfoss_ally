@@ -42,6 +42,8 @@ AUTH_FAILED_MESSAGE = (
     "Authentication failed. Check your Consumer Key and Consumer Secret."
 )
 WINDOW_SENSOR_DELAY = 60.0
+WINDOW_SENSOR_UNAVAILABLE_RETRY_DELAY = 30.0
+WINDOW_SENSOR_UNAVAILABLE_RETRY_LIMIT = 20
 WINDOW_RESTORE_STORE_KEY = f"{DOMAIN}_window_restore"
 WINDOW_RESTORE_STORE_VERSION = 1
 
@@ -123,6 +125,8 @@ class WindowSensorState:
     entity_id: str
     pending_timer: Any | None = None
     pending_open: bool | None = None
+    unavailable_retry_timer: Any | None = None
+    unavailable_retry_count: int = 0
     unsub_state_listener: Any | None = None
 
 
@@ -748,6 +752,8 @@ class DanfossAllyDataUpdateCoordinator(
                 entity_id=entity_id,
                 pending_timer=None,
                 pending_open=None,
+                unavailable_retry_timer=None,
+                unavailable_retry_count=0,
                 unsub_state_listener=unsub,
             )
             self.hass.async_create_task(
@@ -759,6 +765,8 @@ class DanfossAllyDataUpdateCoordinator(
         for state in self._window_sensor_states.values():
             if state.pending_timer:
                 state.pending_timer()
+            if state.unavailable_retry_timer:
+                state.unavailable_retry_timer()
             if state.unsub_state_listener:
                 state.unsub_state_listener()
         self._window_sensor_states.clear()
@@ -773,6 +781,8 @@ class DanfossAllyDataUpdateCoordinator(
         if runtime_state:
             if runtime_state.pending_timer:
                 runtime_state.pending_timer()
+            if runtime_state.unavailable_retry_timer:
+                runtime_state.unavailable_retry_timer()
             if runtime_state.unsub_state_listener:
                 runtime_state.unsub_state_listener()
 
@@ -786,15 +796,6 @@ class DanfossAllyDataUpdateCoordinator(
     ) -> None:
         """Debounce window sensor state changes before acting."""
         state = self.hass.states.get(entity_id)
-        is_open = self._extract_window_open_state(state)
-        if is_open is None:
-            _LOGGER.debug(
-                "Window sensor %s for device %s is unavailable, skipping",
-                entity_id,
-                device_id,
-            )
-            return
-
         runtime_state = self._window_sensor_states.get(device_id)
         if runtime_state is None:
             runtime_state = WindowSensorState(entity_id=entity_id)
@@ -803,6 +804,17 @@ class DanfossAllyDataUpdateCoordinator(
         if runtime_state.pending_timer:
             runtime_state.pending_timer()
             runtime_state.pending_timer = None
+
+        is_open = self._extract_window_open_state(state)
+        if is_open is None:
+            runtime_state.pending_open = None
+            self._async_schedule_window_unavailable_retry(device_id, entity_id)
+            return
+
+        if runtime_state.unavailable_retry_timer:
+            runtime_state.unavailable_retry_timer()
+            runtime_state.unavailable_retry_timer = None
+        runtime_state.unavailable_retry_count = 0
 
         if is_open:
             if device_id in self._window_restore_states:
@@ -815,6 +827,59 @@ class DanfossAllyDataUpdateCoordinator(
             device_id,
             entity_id,
             is_open,
+        )
+
+    def _async_schedule_window_unavailable_retry(
+        self,
+        device_id: str,
+        entity_id: str,
+    ) -> None:
+        """Retry startup evaluation for unavailable window sensors a limited number of times."""
+        from homeassistant.helpers.event import async_call_later
+
+        runtime_state = self._window_sensor_states.get(device_id)
+        if runtime_state is None:
+            return
+
+        if runtime_state.unavailable_retry_timer is not None:
+            return
+
+        if (
+            runtime_state.unavailable_retry_count
+            >= WINDOW_SENSOR_UNAVAILABLE_RETRY_LIMIT
+        ):
+            _LOGGER.debug(
+                "Window sensor %s for device %s is still unavailable after %s retries",
+                entity_id,
+                device_id,
+                runtime_state.unavailable_retry_count,
+            )
+            return
+
+        runtime_state.unavailable_retry_count += 1
+        _LOGGER.debug(
+            "Window sensor %s for device %s is unavailable, retrying in %.0f seconds "
+            "(attempt %s/%s)",
+            entity_id,
+            device_id,
+            WINDOW_SENSOR_UNAVAILABLE_RETRY_DELAY,
+            runtime_state.unavailable_retry_count,
+            WINDOW_SENSOR_UNAVAILABLE_RETRY_LIMIT,
+        )
+
+        async def retry_callback(_now: Any) -> None:
+            current_entity = self.window_sensors_config.get(device_id)
+            current_state = self._window_sensor_states.get(device_id)
+            if current_entity != entity_id or current_state is None:
+                return
+
+            current_state.unavailable_retry_timer = None
+            await self._async_handle_window_sensor_change(device_id, entity_id)
+
+        runtime_state.unavailable_retry_timer = async_call_later(
+            self.hass,
+            WINDOW_SENSOR_UNAVAILABLE_RETRY_DELAY,
+            retry_callback,
         )
 
     def _async_schedule_window_action(
