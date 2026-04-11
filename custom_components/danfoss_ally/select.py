@@ -93,6 +93,7 @@ class DanfossAllyExternalTemperatureSensorSelect(DanfossAllyEntity, SelectEntity
     _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:thermometer-lines"
     _attr_translation_key = "external_temperature_sensor_source"
+    _attr_entity_registry_enabled_default = False
 
     def __init__(self, coordinator, device_id: str) -> None:
         """Initialize the external temperature sensor source select."""
