@@ -125,6 +125,12 @@
         "state": {
           "disabled": "Deaktiviert"
         }
+      },
+      "window_sensor_source": {
+        "name": "Fenstersensor-Quelle",
+        "state": {
+          "disabled": "Deaktiviert"
+        }
       }
     },
     "sensor": {

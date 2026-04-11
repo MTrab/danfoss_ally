@@ -10,12 +10,25 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    STATE_OFF,
+    STATE_ON,
+    STATE_OPEN,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pydanfossally import DanfossAlly, exceptions
 
-from .const import CONF_EXTERNAL_SENSORS, DOMAIN, SCAN_INTERVAL
+from .const import (
+    CONF_EXTERNAL_SENSORS,
+    CONF_WINDOW_SENSORS,
+    DOMAIN,
+    SCAN_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 PENDING_WRITE_TIMEOUT = 60.0
@@ -28,6 +41,9 @@ GENERIC_API_RETRY_AFTER = 300.0
 AUTH_FAILED_MESSAGE = (
     "Authentication failed. Check your Consumer Key and Consumer Secret."
 )
+WINDOW_SENSOR_DELAY = 60.0
+WINDOW_RESTORE_STORE_KEY = f"{DOMAIN}_window_restore"
+WINDOW_RESTORE_STORE_VERSION = 1
 
 
 def _format_error(err: BaseException) -> str:
@@ -100,6 +116,24 @@ class ExternalTempState:
     unsub_state_listener: Any | None = None
 
 
+@dataclass(slots=True)
+class WindowSensorState:
+    """Track window sensor listener and debounce state for a device."""
+
+    entity_id: str
+    pending_timer: Any | None = None
+    pending_open: bool | None = None
+    unsub_state_listener: Any | None = None
+
+
+@dataclass(slots=True)
+class WindowRestoreState:
+    """Persist the thermostat state that should be restored after window close."""
+
+    mode: str
+    target_temperature: float | None
+
+
 DanfossConfigEntry = ConfigEntry
 
 
@@ -125,6 +159,14 @@ class DanfossAllyDataUpdateCoordinator(
         self.client = client
         self._pending_writes: dict[str, PendingWrite] = {}
         self._external_temp_states: dict[str, ExternalTempState] = {}
+        self._window_sensor_states: dict[str, WindowSensorState] = {}
+        self._window_restore_store = Store[dict[str, dict[str, str | float | None]]](
+            hass,
+            WINDOW_RESTORE_STORE_VERSION,
+            WINDOW_RESTORE_STORE_KEY,
+        )
+        self._window_restore_states: dict[str, WindowRestoreState] = {}
+        self._window_restore_loaded = False
         self._refresh_in_progress = False
 
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
@@ -360,6 +402,17 @@ class DanfossAllyDataUpdateCoordinator(
         """Return configured external sensor entity ID for one device."""
         return self.external_sensors_config.get(device_id)
 
+    @property
+    def window_sensors_config(self) -> dict[str, str]:
+        """Return configured window sensor entity IDs by device ID."""
+        if self.config_entry is None:
+            return {}
+        return self.config_entry.data.get(CONF_WINDOW_SENSORS, {})
+
+    def get_window_sensor_entity_id(self, device_id: str) -> str | None:
+        """Return configured window sensor entity ID for one device."""
+        return self.window_sensors_config.get(device_id)
+
     def get_temperature_entity_options(self) -> list[str]:
         """Return entity IDs that can provide a temperature value."""
         options: list[str] = []
@@ -367,6 +420,17 @@ class DanfossAllyDataUpdateCoordinator(
             if not self._is_temperature_entity(state):
                 continue
             if self._extract_temperature_celsius(state) is None:
+                continue
+            options.append(state.entity_id)
+
+        options.sort()
+        return options
+
+    def get_window_entity_options(self) -> list[str]:
+        """Return entity IDs that can provide an open/closed window state."""
+        options: list[str] = []
+        for state in self.hass.states.async_all():
+            if not self._is_window_entity(state):
                 continue
             options.append(state.entity_id)
 
@@ -400,6 +464,34 @@ class DanfossAllyDataUpdateCoordinator(
             return
 
         await self.async_disable_external_temperature(device_id)
+
+    async def async_set_window_sensor_entity(
+        self,
+        device_id: str,
+        entity_id: str | None,
+    ) -> None:
+        """Persist the window sensor mapping and apply runtime listeners."""
+        current_map = dict(self.window_sensors_config)
+
+        if entity_id:
+            current_map[device_id] = entity_id
+        else:
+            current_map.pop(device_id, None)
+
+        self.hass.config_entries.async_update_entry(
+            self.config_entry,
+            data={
+                **self.config_entry.data,
+                CONF_WINDOW_SENSORS: current_map,
+            },
+        )
+
+        if entity_id:
+            await self.async_setup_window_sensor_listeners()
+            await self._async_handle_window_sensor_change(device_id, entity_id)
+            return
+
+        await self.async_disable_window_sensor(device_id)
 
     async def async_setup_external_temp_listeners(self) -> None:
         """Set up state change listeners for all configured external temperature sensors."""
@@ -610,6 +702,325 @@ class DanfossAllyDataUpdateCoordinator(
     async def async_unload_external_temp_listeners(self) -> None:
         """Public method to unload listeners."""
         await self._async_unload_external_temp_listeners()
+
+    async def async_setup_window_sensor_listeners(self) -> None:
+        """Set up state change listeners for all configured window sensors."""
+        from homeassistant.core import callback
+        from homeassistant.helpers.event import async_track_state_change
+
+        await self._async_load_window_restore_states()
+        await self._async_unload_window_sensor_listeners()
+
+        window_sensors = self.window_sensors_config
+        if not window_sensors:
+            return
+
+        _LOGGER.debug(
+            "Setting up window sensor listeners for devices: %s",
+            list(window_sensors.keys()),
+        )
+
+        for device_id, entity_id in window_sensors.items():
+            if not entity_id:
+                continue
+
+            @callback
+            def handle_state_change(
+                entity_id: str,
+                old_state: Any,
+                new_state: Any,
+                device_id: str = device_id,
+            ) -> None:
+                """Handle window sensor entity state change."""
+                del old_state
+                if new_state is None:
+                    return
+                self.hass.async_create_task(
+                    self._async_handle_window_sensor_change(device_id, entity_id)
+                )
+
+            unsub = async_track_state_change(
+                self.hass,
+                [entity_id],
+                handle_state_change,
+            )
+
+            self._window_sensor_states[device_id] = WindowSensorState(
+                entity_id=entity_id,
+                pending_timer=None,
+                pending_open=None,
+                unsub_state_listener=unsub,
+            )
+            self.hass.async_create_task(
+                self._async_handle_window_sensor_change(device_id, entity_id)
+            )
+
+    async def _async_unload_window_sensor_listeners(self) -> None:
+        """Unsubscribe from all configured window sensor listeners."""
+        for state in self._window_sensor_states.values():
+            if state.pending_timer:
+                state.pending_timer()
+            if state.unsub_state_listener:
+                state.unsub_state_listener()
+        self._window_sensor_states.clear()
+
+    async def async_unload_window_sensor_listeners(self) -> None:
+        """Public method to unload window sensor listeners."""
+        await self._async_unload_window_sensor_listeners()
+
+    async def async_disable_window_sensor(self, device_id: str) -> None:
+        """Remove the window sensor listener and restore state if needed."""
+        runtime_state = self._window_sensor_states.pop(device_id, None)
+        if runtime_state:
+            if runtime_state.pending_timer:
+                runtime_state.pending_timer()
+            if runtime_state.unsub_state_listener:
+                runtime_state.unsub_state_listener()
+
+        if device_id in self._window_restore_states:
+            await self._async_restore_window_paused_device(device_id)
+
+    async def _async_handle_window_sensor_change(
+        self,
+        device_id: str,
+        entity_id: str,
+    ) -> None:
+        """Debounce window sensor state changes before acting."""
+        state = self.hass.states.get(entity_id)
+        is_open = self._extract_window_open_state(state)
+        if is_open is None:
+            _LOGGER.debug(
+                "Window sensor %s for device %s is unavailable, skipping",
+                entity_id,
+                device_id,
+            )
+            return
+
+        runtime_state = self._window_sensor_states.get(device_id)
+        if runtime_state is None:
+            runtime_state = WindowSensorState(entity_id=entity_id)
+            self._window_sensor_states[device_id] = runtime_state
+
+        if runtime_state.pending_timer:
+            runtime_state.pending_timer()
+            runtime_state.pending_timer = None
+
+        if is_open:
+            if device_id in self._window_restore_states:
+                return
+        elif device_id not in self._window_restore_states:
+            return
+
+        runtime_state.pending_open = is_open
+        runtime_state.pending_timer = self._async_schedule_window_action(
+            device_id,
+            entity_id,
+            is_open,
+        )
+
+    def _async_schedule_window_action(
+        self,
+        device_id: str,
+        entity_id: str,
+        is_open: bool,
+    ) -> Any:
+        """Schedule the delayed pause/restore action for one window sensor."""
+        from homeassistant.helpers.event import async_call_later
+
+        async def callback(_now: Any) -> None:
+            current_entity = self.window_sensors_config.get(device_id)
+            runtime_state = self._window_sensor_states.get(device_id)
+            if current_entity != entity_id or runtime_state is None:
+                return
+
+            runtime_state.pending_timer = None
+            runtime_state.pending_open = None
+
+            current_open = self._extract_window_open_state(
+                self.hass.states.get(entity_id)
+            )
+            if current_open is None or current_open != is_open:
+                return
+
+            if current_open:
+                await self._async_pause_device_for_open_window(device_id)
+                return
+
+            await self._async_restore_window_paused_device(device_id)
+
+        return async_call_later(self.hass, WINDOW_SENSOR_DELAY, callback)
+
+    async def _async_pause_device_for_open_window(self, device_id: str) -> None:
+        """Pause a thermostat after the selected window sensor stayed open."""
+        if device_id in self._window_restore_states:
+            return
+
+        snapshot = self._capture_window_restore_state(device_id)
+        if snapshot is None:
+            _LOGGER.warning(
+                "Skipping window pause for %s because the current thermostat state "
+                "could not be captured",
+                device_id,
+            )
+            return
+
+        await self.async_set_mode(
+            device_id,
+            "pause",
+            optimistic_updates={"mode": "pause"},
+        )
+        self._window_restore_states[device_id] = snapshot
+        await self._async_save_window_restore_states()
+
+    async def _async_restore_window_paused_device(self, device_id: str) -> None:
+        """Restore the thermostat state captured before window pause."""
+        snapshot = self._window_restore_states.get(device_id)
+        if snapshot is None:
+            return
+
+        current_mode = self.data.get(device_id, {}).get("mode") if self.data else None
+        if current_mode != "pause":
+            self._window_restore_states.pop(device_id, None)
+            await self._async_save_window_restore_states()
+            return
+
+        setpoint_code = self._get_setpoint_code_for_mode(snapshot.mode)
+        optimistic_updates: dict[str, Any] = {"mode": snapshot.mode}
+        if snapshot.target_temperature is not None:
+            optimistic_updates[setpoint_code] = snapshot.target_temperature
+            if snapshot.mode == "manual":
+                optimistic_updates["manual_mode_fast"] = snapshot.target_temperature
+
+            await self.async_set_temperature_for_mode(
+                device_id,
+                snapshot.target_temperature,
+                snapshot.mode,
+                optimistic_updates=optimistic_updates,
+            )
+        else:
+            await self.async_set_mode(
+                device_id,
+                snapshot.mode,
+                optimistic_updates=optimistic_updates,
+            )
+
+        self._window_restore_states.pop(device_id, None)
+        await self._async_save_window_restore_states()
+
+    async def _async_load_window_restore_states(self) -> None:
+        """Load persisted window restore state from Home Assistant storage."""
+        if self._window_restore_loaded:
+            return
+
+        stored = await self._window_restore_store.async_load()
+        self._window_restore_loaded = True
+        if not stored:
+            self._window_restore_states = {}
+            return
+
+        self._window_restore_states = {
+            device_id: WindowRestoreState(
+                mode=str(snapshot["mode"]),
+                target_temperature=(
+                    float(snapshot["target_temperature"])
+                    if snapshot.get("target_temperature") is not None
+                    else None
+                ),
+            )
+            for device_id, snapshot in stored.items()
+            if isinstance(snapshot, dict) and isinstance(snapshot.get("mode"), str)
+        }
+
+    async def _async_save_window_restore_states(self) -> None:
+        """Persist the current window restore state to Home Assistant storage."""
+        await self._window_restore_store.async_save(
+            {
+                device_id: {
+                    "mode": state.mode,
+                    "target_temperature": state.target_temperature,
+                }
+                for device_id, state in self._window_restore_states.items()
+            }
+        )
+
+    def _capture_window_restore_state(
+        self, device_id: str
+    ) -> WindowRestoreState | None:
+        """Capture the current thermostat mode and target setpoint for restore."""
+        if self.data is None:
+            return None
+
+        device = self.data.get(device_id)
+        if not device:
+            return None
+
+        mode = device.get("mode")
+        if not isinstance(mode, str):
+            return None
+
+        return WindowRestoreState(
+            mode=mode,
+            target_temperature=self._get_target_temperature_for_mode(device, mode),
+        )
+
+    def _get_target_temperature_for_mode(
+        self,
+        device: dict[str, Any],
+        mode: str,
+    ) -> float | None:
+        """Return the target temperature currently associated with one mode."""
+        setpoint_code = self._get_setpoint_code_for_mode(mode)
+        value = device.get(setpoint_code)
+        if value is None and setpoint_code != "temp_set":
+            value = device.get("temp_set")
+        if value is None:
+            return None
+
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _get_setpoint_code_for_mode(self, mode: str) -> str:
+        """Map a Danfoss mode to the related setpoint field."""
+        if mode in {"at_home", "home"}:
+            return "at_home_setting"
+        if mode in {"leaving_home", "away"}:
+            return "leaving_home_setting"
+        if mode == "pause":
+            return "pause_setting"
+        if mode == "holiday":
+            return "holiday_setting"
+        if mode == "manual":
+            return "manual_mode_fast"
+        return "temp_set"
+
+    def _is_window_entity(self, state: Any) -> bool:
+        """Return whether an entity should be offered as a window source."""
+        if state is None:
+            return False
+
+        if state.domain == "group":
+            return state.state in {STATE_ON, STATE_OFF}
+
+        if state.domain != "binary_sensor":
+            return False
+
+        device_class = state.attributes.get("device_class")
+        return device_class in {None, "window", "opening", "door", "garage_door"}
+
+    def _extract_window_open_state(self, state: Any) -> bool | None:
+        """Normalize a window sensor state to open/closed."""
+        if state is None:
+            return None
+
+        if state.state in {STATE_UNKNOWN, STATE_UNAVAILABLE}:
+            return None
+        if state.state in {STATE_ON, STATE_OPEN}:
+            return True
+        if state.state == STATE_OFF:
+            return False
+        return None
 
     def _is_temperature_entity(self, state: Any) -> bool:
         """Return whether an entity should be offered as a temperature source."""

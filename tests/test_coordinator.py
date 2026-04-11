@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import time
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from homeassistant.core import State
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pydanfossally import exceptions
@@ -18,6 +20,7 @@ from custom_components.danfoss_ally.coordinator import (
     RATE_LIMIT_RETRY_AFTER,
     SERVER_ERROR_RETRY_AFTER,
     TIMEOUT_RETRY_AFTER,
+    WindowRestoreState,
 )
 
 
@@ -309,3 +312,164 @@ async def test_async_request_refresh_calls_super_when_idle() -> None:
         await coordinator.async_request_refresh()
 
     super_request_refresh.assert_awaited_once()
+
+
+class FakeStates:
+    """Minimal Home Assistant states registry for coordinator tests."""
+
+    def __init__(self, states: dict[str, State]) -> None:
+        self._states = states
+
+    def get(self, entity_id: str) -> State | None:
+        return self._states.get(entity_id)
+
+    def async_all(self) -> list[State]:
+        return list(self._states.values())
+
+
+def make_window_coordinator(
+    *,
+    device: dict | None = None,
+    state: State | None = None,
+) -> DanfossAllyDataUpdateCoordinator:
+    """Create a small coordinator stub for window pause tests."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    coordinator.data = {
+        "device-1": device or {"mode": "manual", "manual_mode_fast": 21.0}
+    }
+    coordinator._pending_writes = {}
+    coordinator._external_temp_states = {}
+    coordinator._window_sensor_states = {}
+    coordinator._window_restore_states = {}
+    coordinator._window_restore_loaded = True
+    coordinator._window_restore_store = AsyncMock()
+    coordinator.config_entry = SimpleNamespace(
+        data={"window_sensors": {"device-1": "binary_sensor.window"}},
+    )
+    coordinator.hass = SimpleNamespace(
+        states=FakeStates(
+            {"binary_sensor.window": state or State("binary_sensor.window", "on")}
+        ),
+        config_entries=SimpleNamespace(async_update_entry=Mock()),
+        async_create_task=lambda coro: coro,
+    )
+    return coordinator
+
+
+@pytest.mark.asyncio
+async def test_pause_device_for_open_window_stores_previous_state() -> None:
+    """Open windows should switch the thermostat to pause and persist restore data."""
+    coordinator = make_window_coordinator()
+    coordinator.async_set_mode = AsyncMock()
+    coordinator._async_save_window_restore_states = AsyncMock()
+
+    await coordinator._async_pause_device_for_open_window("device-1")
+
+    coordinator.async_set_mode.assert_awaited_once_with(
+        "device-1",
+        "pause",
+        optimistic_updates={"mode": "pause"},
+    )
+    assert coordinator._window_restore_states == {
+        "device-1": WindowRestoreState(mode="manual", target_temperature=21.0)
+    }
+    coordinator._async_save_window_restore_states.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_restore_window_paused_device_restores_previous_mode_and_temperature() -> (
+    None
+):
+    """Closing the window should restore the saved thermostat state."""
+    coordinator = make_window_coordinator(
+        device={"mode": "pause", "pause_setting": 7.0, "manual_mode_fast": 21.0}
+    )
+    coordinator._window_restore_states = {
+        "device-1": WindowRestoreState(mode="manual", target_temperature=21.0)
+    }
+    coordinator.async_set_temperature_for_mode = AsyncMock()
+    coordinator.async_set_mode = AsyncMock()
+    coordinator._async_save_window_restore_states = AsyncMock()
+
+    await coordinator._async_restore_window_paused_device("device-1")
+
+    coordinator.async_set_temperature_for_mode.assert_awaited_once_with(
+        "device-1",
+        21.0,
+        "manual",
+        optimistic_updates={"mode": "manual", "manual_mode_fast": 21.0},
+    )
+    coordinator.async_set_mode.assert_not_called()
+    assert coordinator._window_restore_states == {}
+    coordinator._async_save_window_restore_states.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_restore_window_paused_device_discards_stale_snapshot_if_user_resumed() -> (
+    None
+):
+    """Manual user changes should win over an old stored restore snapshot."""
+    coordinator = make_window_coordinator(
+        device={"mode": "manual", "manual_mode_fast": 20.0}
+    )
+    coordinator._window_restore_states = {
+        "device-1": WindowRestoreState(mode="at_home", target_temperature=19.0)
+    }
+    coordinator.async_set_temperature_for_mode = AsyncMock()
+    coordinator._async_save_window_restore_states = AsyncMock()
+
+    await coordinator._async_restore_window_paused_device("device-1")
+
+    coordinator.async_set_temperature_for_mode.assert_not_called()
+    assert coordinator._window_restore_states == {}
+    coordinator._async_save_window_restore_states.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_window_sensor_change_schedules_pause_for_current_open_state() -> (
+    None
+):
+    """Current open sensor state should schedule a pause action."""
+    coordinator = make_window_coordinator(state=State("binary_sensor.window", "on"))
+    cancel_callback = Mock()
+    coordinator._async_schedule_window_action = Mock(return_value=cancel_callback)
+
+    await coordinator._async_handle_window_sensor_change(
+        "device-1",
+        "binary_sensor.window",
+    )
+
+    coordinator._async_schedule_window_action.assert_called_once_with(
+        "device-1",
+        "binary_sensor.window",
+        True,
+    )
+    assert coordinator._window_sensor_states["device-1"].pending_open is True
+    assert (
+        coordinator._window_sensor_states["device-1"].pending_timer is cancel_callback
+    )
+
+
+@pytest.mark.asyncio
+async def test_handle_window_sensor_change_schedules_restore_for_current_closed_state() -> (
+    None
+):
+    """A closed sensor at startup should schedule restore when pause state exists."""
+    coordinator = make_window_coordinator(state=State("binary_sensor.window", "off"))
+    coordinator._window_restore_states = {
+        "device-1": WindowRestoreState(mode="manual", target_temperature=21.0)
+    }
+    cancel_callback = Mock()
+    coordinator._async_schedule_window_action = Mock(return_value=cancel_callback)
+
+    await coordinator._async_handle_window_sensor_change(
+        "device-1",
+        "binary_sensor.window",
+    )
+
+    coordinator._async_schedule_window_action.assert_called_once_with(
+        "device-1",
+        "binary_sensor.window",
+        False,
+    )
+    assert coordinator._window_sensor_states["device-1"].pending_open is False
