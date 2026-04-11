@@ -20,7 +20,6 @@ class FakeCoordinator:
         self.external_temperature_calls: list[
             tuple[str, float | None, dict | None]
         ] = []
-        self.window_state_calls: list[tuple[str, bool, dict | None]] = []
         self.mode_calls: list[tuple[str, str, dict | None]] = []
         self.command_calls: list[tuple[str, list[tuple[str, object]], dict | None]] = []
 
@@ -76,16 +75,6 @@ class FakeCoordinator:
         self.external_temperature_calls.append(
             (device_id, temperature, optimistic_updates)
         )
-        self.data[device_id] = {**self.data[device_id], **(optimistic_updates or {})}
-
-    async def async_set_window_state_open(
-        self,
-        device_id,
-        window_open,
-        *,
-        optimistic_updates=None,
-    ):
-        self.window_state_calls.append((device_id, window_open, optimistic_updates))
         self.data[device_id] = {**self.data[device_id], **(optimistic_updates or {})}
 
     async def async_send_commands(
@@ -266,17 +255,6 @@ async def test_set_external_temperature_enables_radiator_covered() -> None:
             },
         )
     ]
-
-
-@pytest.mark.asyncio
-async def test_set_window_state_open_uses_shared_helper() -> None:
-    """The climate service should reuse the shared window-state helper."""
-    coordinator = FakeCoordinator({"device-1": make_device(window_open=False)})
-    entity = DanfossAllyClimate(coordinator, "device-1")
-
-    await entity.async_set_window_state_open(window_open=True)
-
-    assert coordinator.window_state_calls == [("device-1", True, {"window_open": True})]
 
 
 def test_hvac_action_uses_valve_opening_before_work_state() -> None:

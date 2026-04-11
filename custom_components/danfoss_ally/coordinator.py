@@ -20,6 +20,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pydanfossally import DanfossAlly, exceptions
 
@@ -42,6 +43,8 @@ AUTH_FAILED_MESSAGE = (
     "Authentication failed. Check your Consumer Key and Consumer Secret."
 )
 WINDOW_SENSOR_DELAY = 60.0
+WINDOW_RESTORE_STORE_KEY = f"{DOMAIN}_window_restore"
+WINDOW_RESTORE_STORE_VERSION = 1
 
 
 def _format_error(err: BaseException) -> str:
@@ -125,6 +128,14 @@ class WindowSensorState:
     unsub_state_listener: Any | None = None
 
 
+@dataclass(slots=True)
+class WindowRestoreState:
+    """Persist the thermostat state that should be restored after window close."""
+
+    mode: str
+    target_temperature: float | None
+
+
 DanfossConfigEntry = ConfigEntry
 
 
@@ -151,6 +162,13 @@ class DanfossAllyDataUpdateCoordinator(
         self._pending_writes: dict[str, PendingWrite] = {}
         self._external_temp_states: dict[str, ExternalTempState] = {}
         self._window_sensor_states: dict[str, WindowSensorState] = {}
+        self._window_restore_store = Store[dict[str, dict[str, str | float | None]]](
+            hass,
+            WINDOW_RESTORE_STORE_VERSION,
+            WINDOW_RESTORE_STORE_KEY,
+        )
+        self._window_restore_states: dict[str, WindowRestoreState] = {}
+        self._window_restore_loaded = False
         self._refresh_in_progress = False
 
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
@@ -373,20 +391,6 @@ class DanfossAllyDataUpdateCoordinator(
             self.client.send_command(device_id, commands),
             optimistic_updates=optimistic_updates,
             error_message=f"Failed to send command for {device_id}",
-        )
-
-    async def async_set_window_state_open(
-        self,
-        device_id: str,
-        window_open: bool,
-        *,
-        optimistic_updates: dict[str, Any] | None = None,
-    ) -> None:
-        """Tell the thermostat whether a window is open."""
-        await self.async_send_commands(
-            device_id,
-            [("window_state_info", "open" if window_open else "close")],
-            optimistic_updates=optimistic_updates,
         )
 
     @property
@@ -705,6 +709,7 @@ class DanfossAllyDataUpdateCoordinator(
         from homeassistant.core import Event, callback
         from homeassistant.helpers.event import async_track_state_change_event
 
+        await self._async_load_window_restore_states()
         await self._async_unload_window_sensor_listeners()
 
         window_sensors = self.window_sensors_config
@@ -803,7 +808,7 @@ class DanfossAllyDataUpdateCoordinator(
         await self._async_unload_window_sensor_listeners()
 
     async def async_disable_window_sensor(self, device_id: str) -> None:
-        """Remove the window sensor listener and clear any delayed action."""
+        """Remove the window sensor listener and restore state if needed."""
         runtime_state = self._window_sensor_states.pop(device_id, None)
         if runtime_state:
             if runtime_state.pending_timer:
@@ -813,11 +818,8 @@ class DanfossAllyDataUpdateCoordinator(
             if runtime_state.unsub_state_listener:
                 runtime_state.unsub_state_listener()
 
-        await self.async_set_window_state_open(
-            device_id,
-            False,
-            optimistic_updates={"window_open": False},
-        )
+        if device_id in self._window_restore_states:
+            await self._async_restore_window_paused_device(device_id)
 
     async def _async_handle_window_sensor_change(
         self,
@@ -852,6 +854,12 @@ class DanfossAllyDataUpdateCoordinator(
             "open" if is_open else "closed",
         )
 
+        if is_open:
+            if device_id in self._window_restore_states:
+                return
+        elif device_id not in self._window_restore_states:
+            return
+
         runtime_state.pending_open = is_open
         runtime_state.pending_timer = self._async_schedule_window_action(
             device_id,
@@ -883,13 +891,158 @@ class DanfossAllyDataUpdateCoordinator(
             if current_open is None or current_open != is_open:
                 return
 
-            await self.async_set_window_state_open(
-                device_id,
-                current_open,
-                optimistic_updates={"window_open": current_open},
-            )
+            if current_open:
+                await self._async_pause_device_for_open_window(device_id)
+                return
+
+            await self._async_restore_window_paused_device(device_id)
 
         return async_call_later(self.hass, WINDOW_SENSOR_DELAY, callback)
+
+    async def _async_pause_device_for_open_window(self, device_id: str) -> None:
+        """Pause a thermostat after the selected window sensor stayed open."""
+        if device_id in self._window_restore_states:
+            return
+
+        snapshot = self._capture_window_restore_state(device_id)
+        if snapshot is None:
+            _LOGGER.warning(
+                "Skipping window pause for %s because the current thermostat state "
+                "could not be captured",
+                device_id,
+            )
+            return
+
+        await self.async_set_mode(
+            device_id,
+            "pause",
+            optimistic_updates={"mode": "pause"},
+        )
+        self._window_restore_states[device_id] = snapshot
+        await self._async_save_window_restore_states()
+
+    async def _async_restore_window_paused_device(self, device_id: str) -> None:
+        """Restore the thermostat state captured before window pause."""
+        snapshot = self._window_restore_states.get(device_id)
+        if snapshot is None:
+            return
+
+        current_mode = self.data.get(device_id, {}).get("mode") if self.data else None
+        if current_mode != "pause":
+            self._window_restore_states.pop(device_id, None)
+            await self._async_save_window_restore_states()
+            return
+
+        setpoint_code = self._get_setpoint_code_for_mode(snapshot.mode)
+        optimistic_updates: dict[str, Any] = {"mode": snapshot.mode}
+        if snapshot.target_temperature is not None:
+            optimistic_updates[setpoint_code] = snapshot.target_temperature
+            if snapshot.mode == "manual":
+                optimistic_updates["manual_mode_fast"] = snapshot.target_temperature
+
+            await self.async_set_temperature_for_mode(
+                device_id,
+                snapshot.target_temperature,
+                snapshot.mode,
+                optimistic_updates=optimistic_updates,
+            )
+        else:
+            await self.async_set_mode(
+                device_id,
+                snapshot.mode,
+                optimistic_updates=optimistic_updates,
+            )
+
+        self._window_restore_states.pop(device_id, None)
+        await self._async_save_window_restore_states()
+
+    async def _async_load_window_restore_states(self) -> None:
+        """Load persisted window restore state from Home Assistant storage."""
+        if self._window_restore_loaded:
+            return
+
+        stored = await self._window_restore_store.async_load()
+        self._window_restore_loaded = True
+        if not stored:
+            self._window_restore_states = {}
+            return
+
+        self._window_restore_states = {
+            device_id: WindowRestoreState(
+                mode=str(snapshot["mode"]),
+                target_temperature=(
+                    float(snapshot["target_temperature"])
+                    if snapshot.get("target_temperature") is not None
+                    else None
+                ),
+            )
+            for device_id, snapshot in stored.items()
+            if isinstance(snapshot, dict) and isinstance(snapshot.get("mode"), str)
+        }
+
+    async def _async_save_window_restore_states(self) -> None:
+        """Persist the current window restore state to Home Assistant storage."""
+        await self._window_restore_store.async_save(
+            {
+                device_id: {
+                    "mode": state.mode,
+                    "target_temperature": state.target_temperature,
+                }
+                for device_id, state in self._window_restore_states.items()
+            }
+        )
+
+    def _capture_window_restore_state(
+        self, device_id: str
+    ) -> WindowRestoreState | None:
+        """Capture the current thermostat mode and target setpoint for restore."""
+        if self.data is None:
+            return None
+
+        device = self.data.get(device_id)
+        if not device:
+            return None
+
+        mode = device.get("mode")
+        if not isinstance(mode, str):
+            return None
+
+        return WindowRestoreState(
+            mode=mode,
+            target_temperature=self._get_target_temperature_for_mode(device, mode),
+        )
+
+    def _get_target_temperature_for_mode(
+        self,
+        device: dict[str, Any],
+        mode: str,
+    ) -> float | None:
+        """Return the target temperature currently associated with one mode."""
+        setpoint_code = self._get_setpoint_code_for_mode(mode)
+        value = device.get(setpoint_code)
+        if value is None and setpoint_code != "temp_set":
+            value = device.get("temp_set")
+        if value is None:
+            return None
+
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _get_setpoint_code_for_mode(self, mode: str) -> str:
+        """Map a Danfoss mode to the related setpoint field."""
+        if mode in {"at_home", "home"}:
+            return "at_home_setting"
+        if mode in {"leaving_home", "away"}:
+            return "leaving_home_setting"
+        if mode == "pause":
+            return "pause_setting"
+        if mode == "holiday":
+            return "holiday_setting"
+        if mode == "manual":
+            return "manual_mode_fast"
+        return "temp_set"
 
     def _is_window_entity(self, state: Any) -> bool:
         """Return whether an entity should be offered as a window source."""

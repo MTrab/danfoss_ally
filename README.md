@@ -85,13 +85,11 @@ This feature reduces heating when a window is open. The thermostat can detect th
 
 ### Window pause automation
 
-Radiator thermostats can also use a Home Assistant window sensor, or a Home Assistant group of window sensors, to drive the thermostat's built-in open-window handling.
+Radiator thermostats can also pause heating from Home Assistant when a selected window sensor, or a Home Assistant group of window sensors, stays open for more than one minute.
 
-Open the thermostat in Home Assistant, choose the `Window sensor source`, and save the change. When the selected entity stays open for more than one minute, the integration tells the thermostat that the window is open. When it has stayed closed for more than one minute, the integration tells the thermostat that the window is closed again.
+Open the thermostat in Home Assistant, choose the `Window sensor source`, and save the change. When the selected entity stays open for more than one minute, the integration switches the thermostat to pause mode. When it has stayed closed for more than one minute, the previous thermostat mode and target temperature are restored.
 
-This reuses the same device behavior as the `Danfoss Ally: Set window open state` service, so the thermostat itself remains responsible for handling the heating reduction and resuming its previous behavior.
-
-On startup, the integration waits until Home Assistant has finished starting and then re-checks the current window sensor state. That means it still reacts correctly if the window changed while Home Assistant was down.
+The previous thermostat state is stored persistently, so the pause or restore flow still resumes correctly after a Home Assistant restart. On startup, the integration re-checks the current window sensor state before deciding whether it should pause heating or restore it.
 
 This feature is disabled in `Room Sensor Mode`.
 

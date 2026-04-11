@@ -348,10 +348,10 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
 
     async def async_set_window_state_open(self, **kwargs: Any) -> None:
         """Tell the thermostat whether a window is open."""
-        await self.coordinator.async_set_window_state_open(
+        value = "open" if kwargs["window_open"] else "close"
+        await self.coordinator.async_send_commands(
             self._device_id,
-            kwargs["window_open"],
-            optimistic_updates={"window_open": kwargs["window_open"]},
+            [("window_state_info", value)],
         )
 
     async def async_set_external_temperature(self, **kwargs: Any) -> None:
