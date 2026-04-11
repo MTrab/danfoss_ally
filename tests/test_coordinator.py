@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import CoreState, State
+from homeassistant.helpers.entity_registry import RegistryEntryDisabler
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pydanfossally import exceptions
@@ -509,3 +510,61 @@ async def test_setup_window_sensor_listeners_waits_for_hass_started_event() -> N
     assert coordinator.hass.bus.listen_once_calls
     event_type, _callback = coordinator.hass.bus.listen_once_calls[0]
     assert event_type == EVENT_HOMEASSISTANT_STARTED
+
+
+def test_update_window_feature_entity_registry_disables_native_entities() -> None:
+    """Selecting a window source should disable the native open-window entities."""
+    coordinator = make_window_coordinator()
+    registry = Mock()
+    registry.async_get_entity_id.side_effect = [
+        "binary_sensor.device_1_open_window",
+        "switch.device_1_open_window_detection",
+    ]
+    registry.async_get.side_effect = [
+        SimpleNamespace(disabled_by=None),
+        SimpleNamespace(disabled_by=None),
+    ]
+
+    with patch(
+        "custom_components.danfoss_ally.coordinator.er.async_get",
+        return_value=registry,
+    ):
+        coordinator._async_update_window_feature_entity_registry("device-1", True)
+
+    assert registry.async_update_entity.call_args_list == [
+        (
+            ("binary_sensor.device_1_open_window",),
+            {"disabled_by": RegistryEntryDisabler.INTEGRATION},
+        ),
+        (
+            ("switch.device_1_open_window_detection",),
+            {"disabled_by": RegistryEntryDisabler.INTEGRATION},
+        ),
+    ]
+
+
+def test_update_window_feature_entity_registry_only_reenables_integration_disabled_entities() -> (
+    None
+):
+    """Removing a window source should not override user-disabled entities."""
+    coordinator = make_window_coordinator()
+    registry = Mock()
+    registry.async_get_entity_id.side_effect = [
+        "binary_sensor.device_1_open_window",
+        "switch.device_1_open_window_detection",
+    ]
+    registry.async_get.side_effect = [
+        SimpleNamespace(disabled_by=RegistryEntryDisabler.INTEGRATION),
+        SimpleNamespace(disabled_by=RegistryEntryDisabler.USER),
+    ]
+
+    with patch(
+        "custom_components.danfoss_ally.coordinator.er.async_get",
+        return_value=registry,
+    ):
+        coordinator._async_update_window_feature_entity_registry("device-1", False)
+
+    registry.async_update_entity.assert_called_once_with(
+        "binary_sensor.device_1_open_window",
+        disabled_by=None,
+    )
