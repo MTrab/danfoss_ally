@@ -39,12 +39,48 @@ FORBIDDEN_RETRY_AFTER = 1800.0
 RATE_LIMIT_RETRY_AFTER = 900.0
 SERVER_ERROR_RETRY_AFTER = 600.0
 GENERIC_API_RETRY_AFTER = 300.0
+RATE_LIMIT_ERROR_MESSAGE = "Danfoss Ally API rate limit reached (HTTP 429)."
 AUTH_FAILED_MESSAGE = (
     "Authentication failed. Check your Consumer Key and Consumer Secret."
 )
 WINDOW_SENSOR_DELAY = 60.0
 WINDOW_RESTORE_STORE_KEY = f"{DOMAIN}_window_restore"
 WINDOW_RESTORE_STORE_VERSION = 1
+
+
+class _CoordinatorLoggerAdapter(logging.LoggerAdapter):
+    """Adjust coordinator log severity for expected runtime failures."""
+
+    def __init__(
+        self,
+        logger: logging.Logger,
+        coordinator: DanfossAllyDataUpdateCoordinator,
+    ) -> None:
+        """Initialize the adapter."""
+        super().__init__(logger, extra={})
+        self._coordinator = coordinator
+
+    def error(self, msg: object, *args: object, **kwargs: object) -> None:
+        """Downgrade runtime rate-limit refresh failures to warnings."""
+        if self._should_warn_for_runtime_rate_limit(msg, args):
+            self.warning(msg, *args, **kwargs)
+            return
+
+        super().error(msg, *args, **kwargs)
+
+    def _should_warn_for_runtime_rate_limit(
+        self,
+        msg: object,
+        args: tuple[object, ...],
+    ) -> bool:
+        """Return True when a runtime refresh rate-limit should be a warning."""
+        if not getattr(self._coordinator, "_runtime_refresh_logging", False):
+            return False
+
+        if msg != "Error fetching %s data: %s" or len(args) < 2:
+            return False
+
+        return args[0] == DOMAIN and str(args[1]) == RATE_LIMIT_ERROR_MESSAGE
 
 
 def _format_error(err: BaseException) -> str:
@@ -63,7 +99,7 @@ def _describe_api_error(err: BaseException) -> str:
     if isinstance(err, exceptions.ForbiddenError):
         return "Danfoss Ally API denied access (HTTP 403)."
     if isinstance(err, exceptions.RateLimitError):
-        return "Danfoss Ally API rate limit reached (HTTP 429)."
+        return RATE_LIMIT_ERROR_MESSAGE
     if isinstance(err, exceptions.InternalServerError):
         return "Danfoss Ally API server error (HTTP 5xx)."
     if isinstance(err, exceptions.BadRequestError):
@@ -170,6 +206,27 @@ class DanfossAllyDataUpdateCoordinator(
         self._window_restore_states: dict[str, WindowRestoreState] = {}
         self._window_restore_loaded = False
         self._refresh_in_progress = False
+        self._runtime_refresh_logging = False
+        self.logger = _CoordinatorLoggerAdapter(_LOGGER, self)
+
+    async def _async_refresh(
+        self,
+        log_failures: bool = True,
+        raise_on_auth_failed: bool = False,
+        scheduled: bool = False,
+        raise_on_entry_error: bool = False,
+    ) -> None:
+        """Track whether refresh logging is happening during runtime."""
+        self._runtime_refresh_logging = not raise_on_entry_error
+        try:
+            await super()._async_refresh(
+                log_failures=log_failures,
+                raise_on_auth_failed=raise_on_auth_failed,
+                scheduled=scheduled,
+                raise_on_entry_error=raise_on_entry_error,
+            )
+        finally:
+            self._runtime_refresh_logging = False
 
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         """Fetch the latest device list."""
