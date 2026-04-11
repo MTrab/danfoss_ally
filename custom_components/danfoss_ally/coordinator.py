@@ -495,8 +495,8 @@ class DanfossAllyDataUpdateCoordinator(
 
     async def async_setup_external_temp_listeners(self) -> None:
         """Set up state change listeners for all configured external temperature sensors."""
-        from homeassistant.core import callback
-        from homeassistant.helpers.event import async_track_state_change
+        from homeassistant.core import Event, callback
+        from homeassistant.helpers.event import async_track_state_change_event
 
         # Clear any existing listeners
         await self._async_unload_external_temp_listeners()
@@ -516,22 +516,21 @@ class DanfossAllyDataUpdateCoordinator(
 
             @callback
             def handle_state_change(
-                entity_id: str,
-                old_state: Any,
-                new_state: Any,
+                event: Event[Any],
                 device_id: str = device_id,
             ) -> None:
                 """Handle external temperature entity state change."""
+                new_state = event.data.get("new_state")
                 if new_state is None or new_state.state == "unavailable":
                     return
                 self.hass.async_create_task(
                     self._async_handle_external_temp_change(
-                        device_id, new_state.state, entity_id
+                        device_id, new_state.state, event.data["entity_id"]
                     )
                 )
 
             # Register state listener
-            unsub = async_track_state_change(
+            unsub = async_track_state_change_event(
                 self.hass,
                 [entity_id],
                 handle_state_change,
@@ -705,8 +704,8 @@ class DanfossAllyDataUpdateCoordinator(
 
     async def async_setup_window_sensor_listeners(self) -> None:
         """Set up state change listeners for all configured window sensors."""
-        from homeassistant.core import callback
-        from homeassistant.helpers.event import async_track_state_change
+        from homeassistant.core import Event, callback
+        from homeassistant.helpers.event import async_track_state_change_event
 
         await self._async_load_window_restore_states()
         await self._async_unload_window_sensor_listeners()
@@ -726,20 +725,20 @@ class DanfossAllyDataUpdateCoordinator(
 
             @callback
             def handle_state_change(
-                entity_id: str,
-                old_state: Any,
-                new_state: Any,
+                event: Event[Any],
                 device_id: str = device_id,
             ) -> None:
                 """Handle window sensor entity state change."""
-                del old_state
+                new_state = event.data.get("new_state")
                 if new_state is None:
                     return
                 self.hass.async_create_task(
-                    self._async_handle_window_sensor_change(device_id, entity_id)
+                    self._async_handle_window_sensor_change(
+                        device_id, event.data["entity_id"]
+                    )
                 )
 
-            unsub = async_track_state_change(
+            unsub = async_track_state_change_event(
                 self.hass,
                 [entity_id],
                 handle_state_change,
