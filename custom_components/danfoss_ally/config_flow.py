@@ -138,13 +138,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                     if duplicate_abort is not None:
                         return duplicate_abort
-                    
+
                     # Initialize external sensors config
                     entry_data = {
                         **user_input,
                         CONF_EXTERNAL_SENSORS: {},
                     }
-                    
+
                     return self.async_create_entry(
                         title=validated["title"], data=entry_data
                     )

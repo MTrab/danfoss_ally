@@ -402,7 +402,7 @@ class DanfossAllyDataUpdateCoordinator(
         await self.async_disable_external_temperature(device_id)
 
     async def async_setup_external_temp_listeners(self) -> None:
-        """Setup state change listeners for all configured external temperature sensors."""
+        """Set up state change listeners for all configured external temperature sensors."""
         from homeassistant.core import callback
         from homeassistant.helpers.event import async_track_state_change
 
@@ -613,7 +613,7 @@ class DanfossAllyDataUpdateCoordinator(
 
     def _is_temperature_entity(self, state: Any) -> bool:
         """Return whether an entity should be offered as a temperature source."""
-        if not state.domain == "sensor":
+        if state.domain != "sensor":
             return False
 
         entity_id = getattr(state, "entity_id", "")
