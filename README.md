@@ -39,7 +39,65 @@ Voila
 
 ## Usage
 
-See: [Usage.md](Usage.md)
+This integration is built from public Danfoss documentation and hands-on testing. We do not have access to Danfoss internal documentation, so parts of the behavior described below are based on what we have been able to observe in practice.
+
+### Pre-heat
+
+- The **Pre-Heat** switch in the configuration section turns pre-heat on and off.
+- The **Pre-Heating** binary sensor shows when the device is currently pre-heating.
+- When enabled, the thermostat tries to learn how early it should start heating before a scheduled change from `Away` to `Home`.
+
+### Temperature readings
+
+The available temperature readings vary a bit depending on the device type.
+
+- **Temperature**: The local temperature measured by the device itself.
+- **Floor temperature**: Available on supported Danfoss Icon room thermostats with an infrared floor sensor.
+- **External sensor temperature**: The temperature currently being sent to a radiator thermostat from an external source.
+- **Climate control current temperature**: Usually the local temperature, but on radiator thermostats it may show the external temperature instead, depending on mode.
+- **Radiator covered**: Controls how a radiator thermostat uses an external temperature reading.
+
+For radiator thermostats:
+
+- In `Room Sensor Mode` for covered radiators, the thermostat uses the external temperature directly.
+- In `Auto Offset Mode` for uncovered radiators, the thermostat uses the external reading to calculate an offset against its own measurement.
+
+### External temperature sensors
+
+Radiator thermostats can use an external temperature sensor selected directly in the thermostat configuration in Home Assistant.
+
+Open the thermostat, choose the temperature sensor you want to use, and save the change. From there, the integration keeps the thermostat updated automatically.
+
+This replaces the old Blueprint-based setup for most users and makes the feature much easier to configure and maintain.
+
+### Device actions and services
+
+- **Set preset temperature** lets you set a target temperature for a specific preset mode, or for the active preset if no preset is supplied.
+- **Set HVAC mode** switches between `heat` and `auto`, which maps to `manual` and `home`.
+- **Set preset mode** lets you switch between `Home`, `Away`, `Pause`, and `Holiday`.
+
+### Open window
+
+This feature reduces heating when a window is open. The thermostat can detect this itself, and Home Assistant can also set the state through the `Danfoss Ally: Set window open state` service.
+
+- **Open window detection** enables or disables the feature.
+- **Open window** shows whether the thermostat currently considers a window to be open.
+
+This feature is disabled in `Room Sensor Mode`.
+
+### Diagnostic entities
+
+Depending on device type, additional entities may be available.
+
+- **Mounting mode control** and **Mounting mode active** are radiator-only diagnostics related to installation state.
+- **Valve opening** shows how far the radiator valve is open, from `0%` to `100%`.
+- **Load room mean**, **Load estimate**, and **Load balance** are radiator-only entities related to load balancing in rooms with multiple radiators.
+- **Heat supply request** and **Heat available** expose heat availability related signals for radiator devices.
+- **Adaptation run status** and **Adaptation run valve characteristic found** show whether a radiator thermostat is currently tuning itself.
+- **Heating Control Scaling** adjusts how aggressively the thermostat regulates the valve, with `Quick`, `Moderate`, and `Slow` options.
+- **Thermal Actuator** is an Icon-only binary sensor that indicates whether the actuator is open or closed.
+
+Radiator-only entities are marked in Home Assistant by where they appear and on which devices they are created. The same goes for Icon-only entities.
 
 ## Known issues
 
