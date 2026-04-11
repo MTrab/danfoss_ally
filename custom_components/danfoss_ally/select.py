@@ -143,7 +143,7 @@ class DanfossAllyExternalTemperatureSensorSelect(DanfossAllyEntity, SelectEntity
 
 
 class DanfossAllyWindowSensorSelect(DanfossAllyEntity, SelectEntity):
-    """Select which HA entity should pause heating when a window is open."""
+    """Select which HA entity should drive the thermostat open-window state."""
 
     _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:window-open-variant"
