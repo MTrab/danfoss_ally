@@ -183,6 +183,7 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
         work_state = self.device_value("work_state")
         valve_opening = self.device_value("valve_opening", "valveOpening")
 
+        # V2.2.0 forbedringer: work_state tjek FØRST (inkl. NoHeat/idle prioritet)
         if work_state in {"NoHeat", "idle"}:
             return HVACAction.IDLE
         if work_state in {"Cool", "cool_active"}:
@@ -192,16 +193,19 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
                 return (
                     HVACAction.HEATING if float(valve_opening) > 1 else HVACAction.IDLE
                 )
+            # For Icon devices without valve_opening, fall back to output_status
+            if output_status is not None:
+                return HVACAction.HEATING if output_status else HVACAction.IDLE
             return HVACAction.HEATING
 
-        if output_status is not None and not output_status:
-            return HVACAction.IDLE
+        # V2.1.0 style: output_status fallback for devices without work_state
+        if output_status is not None:
+            if not output_status:
+                return HVACAction.IDLE
+            return HVACAction.HEATING
 
         if valve_opening is not None:
             return HVACAction.HEATING if float(valve_opening) > 1 else HVACAction.IDLE
-
-        if output_status is not None:
-            return HVACAction.HEATING if output_status else HVACAction.IDLE
 
         return None
 
