@@ -20,7 +20,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Autolabel
-        uses: release-drafter/release-drafter/autolabeler@v7
+        uses: release-drafter/release-drafter/autolabeler@v7.6.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -37,7 +37,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Create Release
-        uses: release-drafter/release-drafter@v7
+        uses: release-drafter/release-drafter@v7.6.0
         with:
           disable-releaser: ${{ github.ref != 'refs/heads/master' }}
         env:
