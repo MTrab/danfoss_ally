@@ -183,20 +183,30 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
         work_state = self.device_value("work_state")
         valve_opening = self.device_value("valve_opening", "valveOpening")
 
-        # V2.2.0 forbedringer: work_state tjek FØRST (inkl. NoHeat/idle prioritet)
-        if work_state in {"NoHeat", "idle"}:
-            return HVACAction.IDLE
-        if work_state in {"Cool", "cool_active"}:
-            return HVACAction.COOLING
-        if work_state in {"Heat", "heat_active"}:
-            if valve_opening is not None:
-                return (
-                    HVACAction.HEATING if float(valve_opening) > 1 else HVACAction.IDLE
-                )
-            # For Icon devices without valve_opening, fall back to output_status
-            if output_status is not None:
-                return HVACAction.HEATING if output_status else HVACAction.IDLE
-            return HVACAction.HEATING
+        if work_state is not None:
+            state = str(work_state).lower()
+            if state in {"noheat", "idle"}:
+                return HVACAction.IDLE
+
+            direction: HVACAction | None = None
+            if state.startswith("cool"):
+                direction = HVACAction.COOLING
+            elif state.startswith("heat"):
+                direction = HVACAction.HEATING
+
+            if direction is not None:
+                # The `_active` suffix is the device's explicit activity flag,
+                # distinct from the bare `Cool`/`Heat` regulation-mode value.
+                # Don't collapse them back into one set: a bare `Cool`/`Heat`
+                # only means "this is the current regulation mode", not that
+                # the room is actively calling for it.
+                if state.endswith("_active"):
+                    return direction
+                if valve_opening is not None:
+                    return direction if float(valve_opening) > 1 else HVACAction.IDLE
+                if output_status is not None:
+                    return direction if output_status else HVACAction.IDLE
+                return HVACAction.IDLE
 
         # V2.1.0 style: output_status fallback for devices without work_state
         if output_status is not None:
