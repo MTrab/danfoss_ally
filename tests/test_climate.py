@@ -349,6 +349,82 @@ def test_hvac_action_uses_valve_opening_for_heat_work_state() -> None:
     assert entity.hvac_action.value == "heating"
 
 
+def test_hvac_action_reports_idle_for_cool_work_state_without_active_suffix() -> None:
+    """A bare Cool work_state without the _active suffix is idle, not cooling.
+
+    Observed on a live Icon2 Living Room reading: work_state="Cool",
+    output_status="Inactive", temp_current=21.3 vs a 20.5 setpoint (+0.8 K,
+    below Danfoss's +2 K cooling-engagement threshold), and no flow indicator
+    shown in the Ally app.
+    """
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                output_status=False,
+                work_state="Cool",
+                valve_opening=None,
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.hvac_action.value == "idle"
+
+
+def test_hvac_action_reports_cooling_for_cool_active_work_state() -> None:
+    """The cool_active work_state is the device's explicit call for cooling.
+
+    Observed on a live Icon2 Bedroom reading: work_state="cool_active",
+    output_status="active", temp_current=21.2 vs a 19.0 setpoint (+2.2 K,
+    above Danfoss's +2 K cooling-engagement threshold), matching the flow
+    indicator shown in the Ally app.
+    """
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                output_status=True,
+                work_state="cool_active",
+                valve_opening=None,
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.hvac_action.value == "cooling"
+
+
+def test_hvac_action_reports_idle_for_heat_work_state_without_telemetry() -> None:
+    """A bare Heat work_state without valve or actuator telemetry is idle."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                output_status=None,
+                work_state="Heat",
+                valve_opening=None,
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.hvac_action.value == "idle"
+
+
+def test_hvac_action_work_state_comparison_is_case_insensitive() -> None:
+    """work_state casing must not affect the active-suffix comparison."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                output_status=None,
+                work_state="Cool_Active",
+                valve_opening=None,
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.hvac_action.value == "cooling"
+
+
 def test_hvac_action_falls_back_to_output_status_without_work_state() -> None:
     """Devices without work_state should still use output_status as a fallback."""
     coordinator = FakeCoordinator(
