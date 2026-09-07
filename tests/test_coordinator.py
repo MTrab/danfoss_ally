@@ -573,3 +573,48 @@ async def test_set_window_sensor_entity_updates_runtime_listeners_immediately() 
     )
 
     coordinator.async_update_listeners.assert_called_once()
+
+
+def test_extract_temperature_celsius_converts_fahrenheit() -> None:
+    """A sensor reporting Fahrenheit must be converted before it is sent as Celsius."""
+    state = State(
+        "sensor.living_room_temperature",
+        "70",
+        {"unit_of_measurement": "°F", "device_class": "temperature"},
+    )
+
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+
+    result = coordinator._extract_temperature_celsius(state)
+
+    assert result == pytest.approx(21.111, abs=0.01)
+
+
+def test_extract_temperature_celsius_converts_kelvin() -> None:
+    """A sensor reporting Kelvin must be converted before it is sent as Celsius."""
+    state = State(
+        "sensor.living_room_temperature",
+        "294.15",
+        {"unit_of_measurement": "K", "device_class": "temperature"},
+    )
+
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+
+    result = coordinator._extract_temperature_celsius(state)
+
+    assert result == pytest.approx(21.0, abs=0.01)
+
+
+def test_extract_temperature_celsius_leaves_celsius_untouched() -> None:
+    """A Celsius sensor must pass through unchanged."""
+    state = State(
+        "sensor.living_room_temperature",
+        "21.5",
+        {"unit_of_measurement": "°C", "device_class": "temperature"},
+    )
+
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+
+    result = coordinator._extract_temperature_celsius(state)
+
+    assert result == pytest.approx(21.5, abs=0.01)
