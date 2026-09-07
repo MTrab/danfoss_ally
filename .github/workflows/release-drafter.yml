@@ -20,7 +20,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Autolabel
-        uses: release-drafter/release-drafter/autolabeler@v7.6.0
+        uses: release-drafter/release-drafter/autolabeler@v7.7.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
