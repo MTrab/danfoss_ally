@@ -17,11 +17,13 @@ from homeassistant.const import (
     STATE_OPEN,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
+    UnitOfTemperature,
 )
 from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util.unit_conversion import TemperatureConverter
 from pydanfossally import DanfossAlly, exceptions
 
 from .const import (
@@ -1153,13 +1155,24 @@ class DanfossAllyDataUpdateCoordinator(
             and state.attributes.get("current_temperature") is not None
         )
 
+    @staticmethod
+    def _to_celsius(value: float, unit: Any) -> float:
+        """Convert a temperature reading in [unit] to Celsius."""
+        if unit in (UnitOfTemperature.FAHRENHEIT, UnitOfTemperature.KELVIN):
+            return TemperatureConverter.convert(
+                value, unit, UnitOfTemperature.CELSIUS
+            )
+        return value
+
     def _extract_temperature_celsius(self, state: Any) -> float | None:
         """Extract a temperature value from a state object."""
         if state is None:
             return None
 
+        unit = state.attributes.get("unit_of_measurement")
+
         try:
-            return float(state.state)
+            return self._to_celsius(float(state.state), unit)
         except (ValueError, TypeError):
             pass
 
@@ -1168,7 +1181,7 @@ class DanfossAllyDataUpdateCoordinator(
             return None
 
         try:
-            return float(current_temperature)
+            return self._to_celsius(float(current_temperature), unit)
         except (ValueError, TypeError):
             return None
 
