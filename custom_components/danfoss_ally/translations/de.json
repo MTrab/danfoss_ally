@@ -171,6 +171,9 @@
       },
       "heat_available": {
         "name": "Wärme verfügbar"
+      },
+      "child_lock": {
+        "name": "Kindersicherung"
       }
     }
   }

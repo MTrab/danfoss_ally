@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.danfoss_ally.switch import DanfossAllySwitch, SWITCHES
+from custom_components.danfoss_ally.switch import (
+    DanfossAllySwitch,
+    SWITCHES,
+    _build_entities,
+)
 
 
 class FakeCoordinator:
@@ -114,3 +118,44 @@ def test_window_toggle_becomes_unavailable_when_window_source_is_configured() ->
     entity = make_switch(coordinator, "window_toggle")
 
     assert entity.available is False
+
+
+@pytest.mark.asyncio
+async def test_child_lock_switch_writes_child_lock_command() -> None:
+    """The child lock switch should send the child_lock command both ways."""
+    coordinator = FakeCoordinator({"device-1": make_device(child_lock=False)})
+    entity = make_switch(coordinator, "child_lock")
+
+    assert entity.is_on is False
+
+    await entity.async_turn_on()
+
+    assert entity.is_on is True
+
+    await entity.async_turn_off()
+
+    assert entity.is_on is False
+    assert coordinator.command_calls == [
+        ("device-1", [("child_lock", True)], {"child_lock": True}),
+        ("device-1", [("child_lock", False)], {"child_lock": False}),
+    ]
+
+
+def test_child_lock_switch_is_only_created_for_radiator_thermostats() -> None:
+    """Writing the child lock is verified on radiator thermostats only."""
+    coordinator = FakeCoordinator(
+        {
+            "radiator": make_device(isThermostat=True, child_lock=True),
+            "icon": make_device(model="Icon RT", isThermostat=True, child_lock=True),
+            "sensor": make_device(isThermostat=False, child_lock=True),
+            "no-lock": make_device(isThermostat=True),
+        }
+    )
+
+    created = {
+        entity._device_id
+        for entity in _build_entities(coordinator)
+        if entity.entity_description.key == "child_lock"
+    }
+
+    assert created == {"radiator"}

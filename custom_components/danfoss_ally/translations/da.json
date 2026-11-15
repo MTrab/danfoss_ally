@@ -171,6 +171,9 @@
       },
       "heat_available": {
         "name": "Varme tilgængelig"
+      },
+      "child_lock": {
+        "name": "Børnesikring"
       }
     }
   }
