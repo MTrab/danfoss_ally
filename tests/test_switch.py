@@ -141,14 +141,19 @@ async def test_child_lock_switch_writes_child_lock_command() -> None:
     ]
 
 
-def test_child_lock_switch_is_only_created_for_radiator_thermostats() -> None:
-    """Writing the child lock is verified on radiator thermostats only."""
+def test_child_lock_switch_is_only_created_for_verified_models() -> None:
+    """The child lock switch is limited to models with a verified write."""
     coordinator = FakeCoordinator(
         {
-            "radiator": make_device(isThermostat=True, child_lock=True),
-            "icon": make_device(model="Icon RT", isThermostat=True, child_lock=True),
-            "sensor": make_device(isThermostat=False, child_lock=True),
-            "no-lock": make_device(isThermostat=True),
+            "radiator": make_device(
+                model="Danfoss Ally™ Radiator Thermostat", child_lock=True
+            ),
+            "icon2-rt": make_device(model="Danfoss Icon2 RT", child_lock=False),
+            "icon-rt": make_device(model="Icon RT", child_lock=True),
+            "icon2-controller": make_device(
+                model="Danfoss Icon2 Controller", child_lock=True
+            ),
+            "no-lock": make_device(model="Danfoss Ally™ Radiator Thermostat"),
         }
     )
 
@@ -158,4 +163,4 @@ def test_child_lock_switch_is_only_created_for_radiator_thermostats() -> None:
         if entity.entity_description.key == "child_lock"
     }
 
-    assert created == {"radiator"}
+    assert created == {"radiator", "icon2-rt"}

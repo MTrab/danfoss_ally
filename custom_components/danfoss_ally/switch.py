@@ -80,14 +80,18 @@ async def async_setup_entry(
     async_setup_dynamic_platform_entities(entry, async_add_entities, _build_entities)
 
 
-def _supports_child_lock_write(device: dict[str, object]) -> bool:
-    """Return whether writing the child lock is known to work for the device.
+# Device models on which writing `child_lock` has been verified against the
+# live API (see docs/writable-properties-research.md in pydanfossally).
+CHILD_LOCK_WRITE_VERIFIED_MODELS: tuple[str, ...] = (
+    "radiator thermostat",
+    "icon2 rt",
+)
 
-    Writing `child_lock` has been verified on radiator thermostats only.
-    """
-    return bool(device.get("isThermostat")) and "Icon" not in str(
-        device.get("model", "")
-    )
+
+def _supports_child_lock_write(device: dict[str, object]) -> bool:
+    """Return whether writing the child lock is verified for the device model."""
+    model = str(device.get("model", "")).lower()
+    return any(verified in model for verified in CHILD_LOCK_WRITE_VERIFIED_MODELS)
 
 
 def _build_entities(coordinator) -> list[DanfossAllySwitch]:

@@ -101,7 +101,7 @@ Depending on device type, additional entities may be available.
 
 - **Mounting mode control** and **Mounting mode active** are radiator-only diagnostics related to installation state.
 - **Valve opening** shows how far the radiator valve is open, from `0%` to `100%`.
-- **Child lock** is available as a switch on radiator thermostats, to lock or unlock the buttons on the device. The **Child lock** binary sensor keeps reporting the current state.
+- **Child lock** is available as a switch on radiator thermostats and Icon2 room thermostats, to lock or unlock the buttons on the device. The **Child lock** binary sensor keeps reporting the current state.
 - **Load room mean**, **Load estimate**, and **Load balance** are radiator-only entities related to load balancing in rooms with multiple radiators.
 - **Heat supply request** and **Heat available** expose heat availability related signals for radiator devices.
 - **Adaptation run status** and **Adaptation run valve characteristic found** show whether a radiator thermostat is currently tuning itself.
