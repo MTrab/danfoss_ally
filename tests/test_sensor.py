@@ -61,6 +61,26 @@ def test_external_sensor_temperature_becomes_unavailable_at_disabled_value() -> 
     assert entity.available is False
 
 
+def test_external_sensor_temperature_becomes_unavailable_at_invalid_marker() -> None:
+    """The Zigbee invalid marker (0x8000 = -327.68) should not surface as state."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": {
+                "name": "Living room",
+                "model": "Danfoss Ally Thermostat",
+                "online": True,
+                "ext_measured_rs": -327.68,
+            }
+        }
+    )
+    description = next(
+        item for item in SENSORS if item.key == "external_sensor_temperature"
+    )
+    entity = DanfossAllySensor(coordinator, "device-1", description)
+
+    assert entity.available is False
+
+
 def test_sensor_handles_missing_device_after_discovery() -> None:
     """Previously added sensor entities should stay safe if the device disappears."""
     coordinator = FakeCoordinator(

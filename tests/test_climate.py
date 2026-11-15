@@ -238,6 +238,38 @@ def test_current_temperature_prefers_ext_measured_rs_when_available() -> None:
     assert entity.current_temperature == 25.0
 
 
+def test_current_temperature_ignores_invalid_external_sensor_marker() -> None:
+    """The Zigbee invalid marker (0x8000 = -327.68) is not a room temperature."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                radiator_covered=False,
+                ext_measured_rs=-327.68,
+                temperature=20.9,
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.current_temperature == 20.9
+
+
+def test_current_temperature_ignores_disabled_external_sensor_value() -> None:
+    """A disabled external sensor (-80) should fall back to the local reading."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": make_device(
+                radiator_covered=False,
+                ext_measured_rs=-80.0,
+                temperature=19.5,
+            )
+        }
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.current_temperature == 19.5
+
+
 @pytest.mark.asyncio
 async def test_set_external_temperature_enables_radiator_covered() -> None:
     """Writing an external temperature should enable covered-radiator mode."""

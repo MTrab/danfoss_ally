@@ -25,6 +25,7 @@ from homeassistant.helpers import config_validation as cv, entity_platform
 from .const import (
     PRESET_HOLIDAY,
     PRESET_PAUSE,
+    is_valid_external_temperature,
 )
 from .coordinator import DanfossConfigEntry
 from .entity import DanfossAllyEntity, async_setup_dynamic_platform_entities
@@ -127,7 +128,7 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
             "ext_measured_rs",
             "external_sensor_temperature",
         )
-        if external_sensor_temperature not in (None, -80, -80.0):
+        if is_valid_external_temperature(external_sensor_temperature):
             return external_sensor_temperature
 
         return self.device_value("temperature", default=self.target_temperature)
