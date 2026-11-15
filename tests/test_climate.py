@@ -9,6 +9,12 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.danfoss_ally.climate import DanfossAllyClimate
 from custom_components.danfoss_ally.const import PRESET_HOLIDAY, PRESET_PAUSE
 
+from external_temperature import (
+    INVALID_EXTERNAL_TEMPERATURE_PAYLOAD,
+    requires_invalid_marker_fix,
+)
+from pydanfossally import parse_device_data
+
 
 class FakeCoordinator:
     """Small coordinator stub for entity tests."""
@@ -238,14 +244,16 @@ def test_current_temperature_prefers_ext_measured_rs_when_available() -> None:
     assert entity.current_temperature == 25.0
 
 
+@requires_invalid_marker_fix
 def test_current_temperature_ignores_invalid_external_sensor_marker() -> None:
-    """The Zigbee invalid marker (0x8000 = -327.68) is not a room temperature."""
+    """The raw Zigbee invalid marker (0x8000) must not become the room temperature."""
+    parsed = parse_device_data(INVALID_EXTERNAL_TEMPERATURE_PAYLOAD)
     coordinator = FakeCoordinator(
         {
             "device-1": make_device(
                 radiator_covered=False,
-                ext_measured_rs=-327.68,
-                temperature=20.9,
+                ext_measured_rs=parsed["ext_measured_rs"],
+                temperature=parsed["temperature"],
             )
         }
     )

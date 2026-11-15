@@ -15,7 +15,6 @@ from homeassistant.const import PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 
-from .const import is_valid_external_temperature
 from .coordinator import DanfossConfigEntry
 from .entity import DanfossAllyEntity, async_setup_dynamic_platform_entities
 
@@ -157,7 +156,6 @@ class DanfossAllySensor(DanfossAllyEntity, SensorEntity):
     def available(self) -> bool:
         """Return whether the sensor should be considered available."""
         if self.entity_description.key == "external_sensor_temperature":
-            return super().available and is_valid_external_temperature(
-                self.native_value
-            )
+            value = self.native_value
+            return super().available and value not in (-80, -80.0)
         return super().available
