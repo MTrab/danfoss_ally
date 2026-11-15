@@ -122,3 +122,94 @@ def test_open_window_binary_sensor_becomes_unavailable_when_window_detection_is_
     entity = DanfossAllyBinarySensor(coordinator, "device-1", description)
 
     assert entity.available is False
+
+
+def make_error_code_sensor(**device) -> DanfossAllySensor:
+    """Create the error code sensor for one radiator thermostat payload."""
+    coordinator = FakeCoordinator(
+        {
+            "device-1": {
+                "name": "Living room",
+                "model": "Danfoss Ally™ Radiator Thermostat",
+                "online": True,
+                "isThermostat": True,
+                **device,
+            }
+        }
+    )
+    description = next(item for item in SENSORS if item.key == "error_code")
+    return DanfossAllySensor(coordinator, "device-1", description)
+
+
+def test_error_code_reports_none_without_active_errors() -> None:
+    """A zero bit field means the thermostat reports no error."""
+    entity = make_error_code_sensor(fault=0)
+
+    assert entity.native_value == "none"
+    assert entity.extra_state_attributes == {"raw_value": 0, "errors": []}
+
+
+def test_error_code_decodes_low_battery() -> None:
+    """Bit 13 is shown on the thermostat as E14, low battery."""
+    entity = make_error_code_sensor(fault=8192)
+
+    assert entity.native_value == "E14"
+    assert entity.extra_state_attributes == {
+        "raw_value": 8192,
+        "errors": ["E14: Low battery"],
+    }
+
+
+def test_error_code_decodes_combined_and_unknown_bits() -> None:
+    """Several bits can be set at once, including ones without a description."""
+    entity = make_error_code_sensor(fault=32 | 16 | 16384)
+
+    assert entity.native_value == "E5, E6, E15"
+    assert entity.extra_state_attributes == {
+        "raw_value": 16432,
+        "errors": [
+            "E5: Unknown error",
+            "E6: Motor error",
+            "E15: Critical low battery",
+        ],
+    }
+
+
+def test_error_code_falls_back_to_sw_error_code() -> None:
+    """The sw_error_code status is used when fault is not reported."""
+    entity = make_error_code_sensor(sw_error_code=2048)
+
+    assert entity.native_value == "E12"
+
+
+def test_error_code_is_unknown_for_non_integer_values() -> None:
+    """Unexpected payloads should not be decoded."""
+    entity = make_error_code_sensor(fault="motor")
+
+    assert entity.native_value is None
+    assert entity.extra_state_attributes is None
+
+
+def test_error_code_is_only_created_for_radiator_thermostats() -> None:
+    """Icon devices and non-thermostats do not get the radiator error table."""
+    description = next(item for item in SENSORS if item.key == "error_code")
+
+    assert description.exists_fn(
+        {"isThermostat": True, "model": "Danfoss Ally™ Radiator Thermostat", "fault": 0}
+    )
+    assert not description.exists_fn(
+        {"isThermostat": True, "model": "Icon RT", "fault": 0}
+    )
+    assert not description.exists_fn({"isThermostat": False, "fault": 0})
+    assert not description.exists_fn({"isThermostat": True, "model": "x"})
+
+
+def test_other_sensors_have_no_extra_attributes() -> None:
+    """Sensors without an attributes function keep exposing no extra attributes."""
+    coordinator = FakeCoordinator(
+        {"device-1": {"name": "Living room", "online": True, "battery": 95}}
+    )
+    description = next(item for item in SENSORS if item.key == "battery")
+    entity = DanfossAllySensor(coordinator, "device-1", description)
+
+    assert entity.extra_state_attributes is None

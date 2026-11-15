@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -19,12 +20,81 @@ from .coordinator import DanfossConfigEntry
 from .entity import DanfossAllyEntity, async_setup_dynamic_platform_entities
 
 
+NO_ERROR_STATE = "none"
+
+# Radiator thermostat "SW error code" bit field (Zigbee attribute 0x4000 of the
+# diagnostics cluster 0x0B05), as listed in the Danfoss Ally radiator
+# thermostat Zigbee specification. Bit n is shown on the device as E(n+1).
+ERROR_CODE_DESCRIPTIONS: dict[int, str] = {
+    1: "Top PCB sensor error",
+    2: "Side PCB sensor error",
+    3: "Non-volatile memory error",
+    4: "Unknown hardware error",
+    6: "Motor error",
+    8: "Invalid internal communication",
+    10: "Invalid clock information",
+    12: "Radio communication error",
+    13: "Encoder jammed",
+    14: "Low battery",
+    15: "Critical low battery",
+}
+UNKNOWN_ERROR_DESCRIPTION = "Unknown error"
+
+
+def _raw_error_code(device: dict[str, object]) -> int | None:
+    """Return the raw error bit field reported for a thermostat."""
+    value = device.get("fault", device.get("sw_error_code"))
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def _active_error_numbers(raw: int) -> list[int]:
+    """Return the E-numbers of every bit set in the error bit field."""
+    return [bit + 1 for bit in range(raw.bit_length()) if raw & (1 << bit)]
+
+
+def _has_error_code(device: dict[str, object]) -> bool:
+    """Return whether the device is a radiator thermostat reporting error codes."""
+    return (
+        bool(device.get("isThermostat"))
+        and "Icon" not in str(device.get("model", ""))
+        and ("fault" in device or "sw_error_code" in device)
+    )
+
+
+def _error_code_state(device: dict[str, object]) -> str | None:
+    """Return the active error codes, for example "E6, E14"."""
+    raw = _raw_error_code(device)
+    if raw is None:
+        return None
+    if raw == 0:
+        return NO_ERROR_STATE
+    return ", ".join(f"E{number}" for number in _active_error_numbers(raw))
+
+
+def _error_code_attributes(device: dict[str, object]) -> dict[str, Any] | None:
+    """Return the raw bit field and a description of every active error."""
+    raw = _raw_error_code(device)
+    if raw is None:
+        return None
+    return {
+        "raw_value": raw,
+        "errors": [
+            f"E{number}: "
+            f"{ERROR_CODE_DESCRIPTIONS.get(number, UNKNOWN_ERROR_DESCRIPTION)}"
+            for number in _active_error_numbers(raw)
+        ],
+    }
+
+
 @dataclass(frozen=True, kw_only=True)
 class DanfossAllySensorDescription(SensorEntityDescription):
     """Describe a Danfoss Ally sensor entity."""
 
     exists_fn: Callable[[dict[str, object]], bool]
     value_fn: Callable[[dict[str, object]], object]
+    attributes_fn: Callable[[dict[str, object]], dict[str, Any] | None] | None = None
     unique_prefix: str
 
 
@@ -108,6 +178,16 @@ SENSORS: tuple[DanfossAllySensorDescription, ...] = (
         ),
         unique_prefix="external sensor temperature",
     ),
+    DanfossAllySensorDescription(
+        key="error_code",
+        translation_key="error_code",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:alert-circle-outline",
+        exists_fn=_has_error_code,
+        value_fn=_error_code_state,
+        attributes_fn=_error_code_attributes,
+        unique_prefix="error code",
+    ),
 )
 
 
@@ -151,6 +231,13 @@ class DanfossAllySensor(DanfossAllyEntity, SensorEntity):
             return self.entity_description.value_fn(self.device)
         except (KeyError, TypeError):
             return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra details for sensors that provide them."""
+        if self.entity_description.attributes_fn is None:
+            return None
+        return self.entity_description.attributes_fn(self.device)
 
     @property
     def available(self) -> bool:
