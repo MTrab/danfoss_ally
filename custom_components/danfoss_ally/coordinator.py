@@ -420,6 +420,21 @@ class DanfossAllyDataUpdateCoordinator(
             error_message=f"Failed to set pause temperature for {device_id}",
         )
 
+    async def async_set_holiday_setting(
+        self,
+        device_id: str,
+        temperature: float,
+        *,
+        optimistic_updates: dict[str, Any] | None = None,
+    ) -> None:
+        """Write the holiday setpoint and refresh state."""
+        await self._async_run_write(
+            device_id,
+            self.client.set_holiday_setting(device_id, temperature),
+            optimistic_updates=optimistic_updates,
+            error_message=f"Failed to set holiday temperature for {device_id}",
+        )
+
     async def async_set_radiator_covered(
         self,
         device_id: str,

@@ -109,6 +109,9 @@
       },
       "pause_setting": {
         "name": "Pause-Temperatur"
+      },
+      "holiday_setting": {
+        "name": "Urlaubs-Temperatur"
       }
     },
     "select": {

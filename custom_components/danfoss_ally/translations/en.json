@@ -109,6 +109,9 @@
       },
       "pause_setting": {
         "name": "Pause temperature"
+      },
+      "holiday_setting": {
+        "name": "Holiday temperature"
       }
     },
     "select": {
