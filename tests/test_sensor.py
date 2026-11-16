@@ -8,6 +8,12 @@ from custom_components.danfoss_ally.binary_sensor import (
 )
 from custom_components.danfoss_ally.sensor import DanfossAllySensor, SENSORS
 
+from external_temperature import (
+    INVALID_EXTERNAL_TEMPERATURE_PAYLOAD,
+    requires_invalid_marker_fix,
+)
+from pydanfossally import parse_device_data
+
 
 class FakeCoordinator:
     """Coordinator stub used by the sensor entities."""
@@ -50,6 +56,28 @@ def test_external_sensor_temperature_becomes_unavailable_at_disabled_value() -> 
                 "model": "Danfoss Ally Thermostat",
                 "online": True,
                 "ext_measured_rs": -80.0,
+            }
+        }
+    )
+    description = next(
+        item for item in SENSORS if item.key == "external_sensor_temperature"
+    )
+    entity = DanfossAllySensor(coordinator, "device-1", description)
+
+    assert entity.available is False
+
+
+@requires_invalid_marker_fix
+def test_external_sensor_temperature_becomes_unavailable_at_invalid_marker() -> None:
+    """The raw Zigbee invalid marker (0x8000) should not surface as state."""
+    parsed = parse_device_data(INVALID_EXTERNAL_TEMPERATURE_PAYLOAD)
+    coordinator = FakeCoordinator(
+        {
+            "device-1": {
+                "name": "Living room",
+                "model": "Danfoss Ally Thermostat",
+                "online": True,
+                "ext_measured_rs": parsed["ext_measured_rs"],
             }
         }
     )
