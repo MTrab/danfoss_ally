@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.danfoss_ally.switch import DanfossAllySwitch, SWITCHES
+from custom_components.danfoss_ally.switch import (
+    DanfossAllySwitch,
+    SWITCHES,
+    _build_entities,
+)
 
 
 class FakeCoordinator:
@@ -114,3 +118,49 @@ def test_window_toggle_becomes_unavailable_when_window_source_is_configured() ->
     entity = make_switch(coordinator, "window_toggle")
 
     assert entity.available is False
+
+
+@pytest.mark.asyncio
+async def test_child_lock_switch_writes_child_lock_command() -> None:
+    """The child lock switch should send the child_lock command both ways."""
+    coordinator = FakeCoordinator({"device-1": make_device(child_lock=False)})
+    entity = make_switch(coordinator, "child_lock")
+
+    assert entity.is_on is False
+
+    await entity.async_turn_on()
+
+    assert entity.is_on is True
+
+    await entity.async_turn_off()
+
+    assert entity.is_on is False
+    assert coordinator.command_calls == [
+        ("device-1", [("child_lock", True)], {"child_lock": True}),
+        ("device-1", [("child_lock", False)], {"child_lock": False}),
+    ]
+
+
+def test_child_lock_switch_is_only_created_for_verified_models() -> None:
+    """The child lock switch is limited to models with a verified write."""
+    coordinator = FakeCoordinator(
+        {
+            "radiator": make_device(
+                model="Danfoss Ally™ Radiator Thermostat", child_lock=True
+            ),
+            "icon2-rt": make_device(model="Danfoss Icon2 RT", child_lock=False),
+            "icon-rt": make_device(model="Icon RT", child_lock=True),
+            "icon2-controller": make_device(
+                model="Danfoss Icon2 Controller", child_lock=True
+            ),
+            "no-lock": make_device(model="Danfoss Ally™ Radiator Thermostat"),
+        }
+    )
+
+    created = {
+        entity._device_id
+        for entity in _build_entities(coordinator)
+        if entity.entity_description.key == "child_lock"
+    }
+
+    assert created == {"radiator", "icon2-rt"}

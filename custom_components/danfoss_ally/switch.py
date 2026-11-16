@@ -60,6 +60,14 @@ SWITCHES: tuple[DanfossAllySwitchDescription, ...] = (
         entity_registry_enabled_default=False,
         unique_prefix="{} heat available",
     ),
+    DanfossAllySwitchDescription(
+        key="child_lock",
+        translation_key="child_lock",
+        entity_category=EntityCategory.CONFIG,
+        icon="mdi:lock",
+        entity_registry_enabled_default=False,
+        unique_prefix="{} child lock",
+    ),
 )
 
 
@@ -72,6 +80,20 @@ async def async_setup_entry(
     async_setup_dynamic_platform_entities(entry, async_add_entities, _build_entities)
 
 
+# Device models on which writing `child_lock` has been verified against the
+# live API (see docs/writable-properties-research.md in pydanfossally).
+CHILD_LOCK_WRITE_VERIFIED_MODELS: tuple[str, ...] = (
+    "radiator thermostat",
+    "icon2 rt",
+)
+
+
+def _supports_child_lock_write(device: dict[str, object]) -> bool:
+    """Return whether writing the child lock is verified for the device model."""
+    model = str(device.get("model", "")).lower()
+    return any(verified in model for verified in CHILD_LOCK_WRITE_VERIFIED_MODELS)
+
+
 def _build_entities(coordinator) -> list[DanfossAllySwitch]:
     """Build switch entities for currently discovered devices."""
     entities: list[DanfossAllySwitch] = []
@@ -79,6 +101,10 @@ def _build_entities(coordinator) -> list[DanfossAllySwitch]:
         if str(device.get("model", "")).lower() == "icon zigbee module":
             continue
         for description in SWITCHES:
+            if description.key == "child_lock" and not _supports_child_lock_write(
+                device
+            ):
+                continue
             if description.key in device:
                 entities.append(DanfossAllySwitch(coordinator, device_id, description))
     return entities

@@ -177,6 +177,9 @@
       },
       "heat_available": {
         "name": "Heat available"
+      },
+      "child_lock": {
+        "name": "Child lock"
       }
     }
   }
