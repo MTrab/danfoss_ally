@@ -122,3 +122,38 @@ def test_open_window_binary_sensor_becomes_unavailable_when_window_detection_is_
     entity = DanfossAllyBinarySensor(coordinator, "device-1", description)
 
     assert entity.available is False
+
+
+def make_error_code_sensor(**device) -> DanfossAllySensor:
+    """Create the error code sensor for one device payload."""
+    coordinator = FakeCoordinator(
+        {"device-1": {"name": "Living room", "online": True, **device}}
+    )
+    description = next(item for item in SENSORS if item.key == "error_code")
+    return DanfossAllySensor(coordinator, "device-1", description)
+
+
+def test_error_code_exposes_the_raw_fault_value() -> None:
+    """The sensor reports the API value as-is, without decoding it."""
+    assert make_error_code_sensor(fault=0).native_value == 0
+    assert make_error_code_sensor(fault=8192).native_value == 8192
+
+
+def test_error_code_falls_back_to_sw_error_code() -> None:
+    """The sw_error_code status is used when fault is not reported."""
+    assert make_error_code_sensor(sw_error_code=2048).native_value == 2048
+
+
+def test_error_code_is_unknown_for_non_integer_values() -> None:
+    """Unexpected payloads should not be reported as an error value."""
+    assert make_error_code_sensor(fault="motor").native_value is None
+    assert make_error_code_sensor(fault=True).native_value is None
+
+
+def test_error_code_is_only_created_when_the_api_reports_it() -> None:
+    """Devices without a fault status do not get the sensor."""
+    description = next(item for item in SENSORS if item.key == "error_code")
+
+    assert description.exists_fn({"fault": 0})
+    assert description.exists_fn({"sw_error_code": 0})
+    assert not description.exists_fn({"battery": 95})

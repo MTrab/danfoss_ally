@@ -101,6 +101,7 @@ Depending on device type, additional entities may be available.
 
 - **Mounting mode control** and **Mounting mode active** are radiator-only diagnostics related to installation state.
 - **Valve opening** shows how far the radiator valve is open, from `0%` to `100%`.
+- **Error code** shows the raw error value the API reports for a device (`fault`), `0` meaning no error. The value is not interpreted.
 - **Load room mean**, **Load estimate**, and **Load balance** are radiator-only entities related to load balancing in rooms with multiple radiators.
 - **Heat supply request** and **Heat available** expose heat availability related signals for radiator devices.
 - **Adaptation run status** and **Adaptation run valve characteristic found** show whether a radiator thermostat is currently tuning itself.

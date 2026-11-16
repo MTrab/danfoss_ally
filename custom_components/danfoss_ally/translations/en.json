@@ -157,6 +157,9 @@
       },
       "external_sensor_temperature": {
         "name": "External sensor temperature"
+      },
+      "error_code": {
+        "name": "Error code"
       }
     },
     "switch": {
