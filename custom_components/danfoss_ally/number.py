@@ -86,6 +86,18 @@ NUMBERS: tuple[DanfossAllyNumberDescription, ...] = (
         entity_registry_enabled_default=False,
         unique_prefix="pause setting",
     ),
+    DanfossAllyNumberDescription(
+        key="holiday_setting",
+        translation_key="holiday_setting",
+        device_class=NumberDeviceClass.TEMPERATURE,
+        native_min_value=MIN_TEMPERATURE,
+        native_max_value=MAX_TEMPERATURE,
+        native_step=TEMPERATURE_STEP,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+        unique_prefix="holiday setting",
+    ),
 )
 
 
@@ -159,6 +171,14 @@ class DanfossAllyNumber(DanfossAllyEntity, NumberEntity):
 
         if self.entity_description.key == "leaving_home_setting":
             await self.coordinator.async_set_leaving_home_setting(
+                self._device_id,
+                temperature,
+                optimistic_updates=optimistic_updates,
+            )
+            return
+
+        if self.entity_description.key == "holiday_setting":
+            await self.coordinator.async_set_holiday_setting(
                 self._device_id,
                 temperature,
                 optimistic_updates=optimistic_updates,

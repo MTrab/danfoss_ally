@@ -288,6 +288,32 @@ async def test_async_set_pause_setting_uses_dedicated_client_helper() -> None:
 
 
 @pytest.mark.asyncio
+async def test_async_set_holiday_setting_uses_dedicated_client_helper() -> None:
+    """Holiday writes should call the specialized API helper."""
+    coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)
+    holiday_call = object()
+    coordinator.client = Mock()
+    coordinator.client.set_holiday_setting = Mock(return_value=holiday_call)
+    coordinator.client.set_temperature_for_mode = Mock()
+    coordinator._async_run_write = AsyncMock()
+
+    await coordinator.async_set_holiday_setting(
+        "device-1",
+        6.5,
+        optimistic_updates={"holiday_setting": 6.5},
+    )
+
+    coordinator.client.set_holiday_setting.assert_called_once_with("device-1", 6.5)
+    coordinator.client.set_temperature_for_mode.assert_not_called()
+    coordinator._async_run_write.assert_awaited_once_with(
+        "device-1",
+        holiday_call,
+        optimistic_updates={"holiday_setting": 6.5},
+        error_message="Failed to set holiday temperature for device-1",
+    )
+
+
+@pytest.mark.asyncio
 async def test_async_request_refresh_skips_when_refresh_is_active() -> None:
     """Manual refresh requests should be ignored while another refresh is running."""
     coordinator = object.__new__(DanfossAllyDataUpdateCoordinator)

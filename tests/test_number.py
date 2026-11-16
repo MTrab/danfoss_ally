@@ -17,6 +17,7 @@ class FakeCoordinator:
         self.at_home_setting_calls: list[tuple[str, float, dict | None]] = []
         self.leaving_home_setting_calls: list[tuple[str, float, dict | None]] = []
         self.pause_setting_calls: list[tuple[str, float, dict | None]] = []
+        self.holiday_setting_calls: list[tuple[str, float, dict | None]] = []
 
     async def async_set_upper_temp(
         self, device_id, temperature, *, optimistic_updates=None
@@ -50,6 +51,12 @@ class FakeCoordinator:
         self.pause_setting_calls.append((device_id, temperature, optimistic_updates))
         self.data[device_id] = {**self.data[device_id], **(optimistic_updates or {})}
 
+    async def async_set_holiday_setting(
+        self, device_id, temperature, *, optimistic_updates=None
+    ):
+        self.holiday_setting_calls.append((device_id, temperature, optimistic_updates))
+        self.data[device_id] = {**self.data[device_id], **(optimistic_updates or {})}
+
 
 def make_device(**overrides):
     """Create a small number-capable thermostat payload."""
@@ -63,6 +70,7 @@ def make_device(**overrides):
         "at_home_setting": 21.5,
         "leaving_home_setting": 17.0,
         "pause_setting": 12.0,
+        "holiday_setting": 8.0,
     }
     base.update(overrides)
     return base
@@ -144,3 +152,20 @@ async def test_pause_setting_uses_pause_helper() -> None:
     assert coordinator.pause_setting_calls == [
         ("device-1", 11.5, {"pause_setting": 11.5})
     ]
+
+
+@pytest.mark.asyncio
+async def test_holiday_setting_uses_holiday_helper() -> None:
+    """Holiday setpoint should route to the dedicated holiday helper."""
+    coordinator = FakeCoordinator({"device-1": make_device()})
+    entity = make_number(coordinator, "holiday_setting")
+
+    assert entity.native_value == 8.0
+
+    await entity.async_set_native_value(6.5)
+
+    assert coordinator.holiday_setting_calls == [
+        ("device-1", 6.5, {"holiday_setting": 6.5})
+    ]
+    assert coordinator.pause_setting_calls == []
+    assert entity.native_value == 6.5

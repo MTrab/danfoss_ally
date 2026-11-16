@@ -19,6 +19,14 @@ from .coordinator import DanfossConfigEntry
 from .entity import DanfossAllyEntity, async_setup_dynamic_platform_entities
 
 
+def _raw_error_code(device: dict[str, object]) -> int | None:
+    """Return the raw error value the API reports, without interpreting it."""
+    value = device.get("fault", device.get("sw_error_code"))
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
+
+
 @dataclass(frozen=True, kw_only=True)
 class DanfossAllySensorDescription(SensorEntityDescription):
     """Describe a Danfoss Ally sensor entity."""
@@ -107,6 +115,15 @@ SENSORS: tuple[DanfossAllySensorDescription, ...] = (
             "ext_measured_rs", device.get("external_sensor_temperature")
         ),
         unique_prefix="external sensor temperature",
+    ),
+    DanfossAllySensorDescription(
+        key="error_code",
+        translation_key="error_code",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:alert-circle-outline",
+        exists_fn=lambda device: "fault" in device or "sw_error_code" in device,
+        value_fn=_raw_error_code,
+        unique_prefix="error code",
     ),
 )
 

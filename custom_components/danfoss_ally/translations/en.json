@@ -109,6 +109,9 @@
       },
       "pause_setting": {
         "name": "Pause temperature"
+      },
+      "holiday_setting": {
+        "name": "Holiday temperature"
       }
     },
     "select": {
@@ -154,6 +157,9 @@
       },
       "external_sensor_temperature": {
         "name": "External sensor temperature"
+      },
+      "error_code": {
+        "name": "Error code"
       }
     },
     "switch": {
