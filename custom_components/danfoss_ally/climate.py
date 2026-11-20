@@ -151,11 +151,14 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
     def hvac_mode(self) -> HVACMode | None:
         """Return the current HVAC mode."""
         mode = self.device_value("mode")
-        work_state = self.device_value("work_state")
+        # Vacation at home follows the Saturday schedule.
+        if mode in {"at_home", "leaving_home", "holiday_sat"}:
+            return HVACMode.AUTO
 
         if self._is_icon_device:
-            if mode in {"at_home", "leaving_home", "holiday", "pause"}:
+            if mode in {"holiday", "pause"}:
                 return HVACMode.AUTO
+            work_state = self.device_value("work_state")
             if work_state in {"Heat", "heat_active"}:
                 if self.device_value("manual_mode_fast") == self.device_value(
                     "lower_temp"
@@ -170,8 +173,6 @@ class DanfossAllyClimate(DanfossAllyEntity, ClimateEntity):
                 return HVACMode.COOL
             return HVACMode.AUTO
 
-        if mode in {"at_home", "leaving_home"}:
-            return HVACMode.AUTO
         if mode in {"manual", "pause", "holiday"}:
             return HVACMode.HEAT
         return None
