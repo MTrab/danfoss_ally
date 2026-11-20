@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from homeassistant.components.climate.const import PRESET_HOME
+from homeassistant.components.climate.const import PRESET_HOME, HVACMode
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.danfoss_ally.climate import DanfossAllyClimate
@@ -194,6 +194,18 @@ def test_holiday_mode_maps_to_holiday_preset() -> None:
     entity = DanfossAllyClimate(coordinator, "device-1")
 
     assert entity.preset_mode == PRESET_HOLIDAY
+
+
+@pytest.mark.parametrize("model", ["Danfoss Ally Thermostat", "Icon RT"])
+def test_vacation_at_home_reports_auto_without_a_preset(model: str) -> None:
+    """Vacation at home follows a schedule without exposing a writable preset."""
+    coordinator = FakeCoordinator(
+        {"device-1": make_device(mode="holiday_sat", model=model)}
+    )
+    entity = DanfossAllyClimate(coordinator, "device-1")
+
+    assert entity.state == HVACMode.AUTO
+    assert entity.preset_mode is None
 
 
 def test_current_temperature_prefers_external_sensor_when_radiator_is_covered() -> None:
