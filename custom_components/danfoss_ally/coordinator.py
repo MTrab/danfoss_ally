@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 import math
 import time
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -44,6 +45,7 @@ AUTH_FAILED_MESSAGE = (
     "Authentication failed. Check your Consumer Key and Consumer Secret."
 )
 WINDOW_SENSOR_DELAY = 60.0
+EXTERNAL_TEMP_REFRESH_INTERVAL = timedelta(minutes=30)
 WINDOW_RESTORE_STORE_KEY = f"{DOMAIN}_window_restore"
 WINDOW_RESTORE_STORE_VERSION = 1
 
@@ -151,6 +153,14 @@ class ExternalTempState:
     last_sent_value: float | None  # in Celsius
     last_sent_at: float  # timestamp
     unsub_state_listener: Any | None = None
+    unsub_refresh_timer: Callable[[], None] | None = None
+
+    def cancel(self) -> None:
+        """Remove the state listener and periodic refresh."""
+        if self.unsub_state_listener:
+            self.unsub_state_listener()
+        if self.unsub_refresh_timer:
+            self.unsub_refresh_timer()
 
 
 @dataclass(slots=True)
@@ -534,7 +544,7 @@ class DanfossAllyDataUpdateCoordinator(
 
         if entity_id:
             await self.async_setup_external_temp_listeners()
-            await self._async_handle_external_temp_change(device_id, "", entity_id)
+            await self._async_handle_external_temp_change(device_id, entity_id)
             return
 
         await self.async_disable_external_temperature(device_id)
@@ -569,9 +579,12 @@ class DanfossAllyDataUpdateCoordinator(
         await self.async_disable_window_sensor(device_id)
 
     async def async_setup_external_temp_listeners(self) -> None:
-        """Set up state change listeners for all configured external temperature sensors."""
+        """Set up change listeners and periodic refreshes for external sensors."""
         from homeassistant.core import Event, callback
-        from homeassistant.helpers.event import async_track_state_change_event
+        from homeassistant.helpers.event import (
+            async_track_state_change_event,
+            async_track_time_interval,
+        )
 
         # Clear any existing listeners
         await self._async_unload_external_temp_listeners()
@@ -600,7 +613,7 @@ class DanfossAllyDataUpdateCoordinator(
                     return
                 self.hass.async_create_task(
                     self._async_handle_external_temp_change(
-                        device_id, new_state.state, event.data["entity_id"]
+                        device_id, event.data["entity_id"]
                     )
                 )
 
@@ -612,11 +625,27 @@ class DanfossAllyDataUpdateCoordinator(
             )
 
             # Store listener for cleanup
-            self._external_temp_states[device_id] = ExternalTempState(
+            runtime_state = ExternalTempState(
                 entity_id=entity_id,
                 last_sent_value=None,
                 last_sent_at=0,
                 unsub_state_listener=unsub,
+            )
+            self._external_temp_states[device_id] = runtime_state
+
+            async def refresh_temperature(
+                _now: datetime,
+                device_id: str = device_id,
+                runtime_state: ExternalTempState = runtime_state,
+            ) -> None:
+                """Refresh the active sensor even if its reading has not changed."""
+                if self._external_temp_states.get(device_id) is runtime_state:
+                    await self._async_handle_external_temp_change(
+                        device_id, runtime_state.entity_id, refresh=True
+                    )
+
+            runtime_state.unsub_refresh_timer = async_track_time_interval(
+                self.hass, refresh_temperature, EXTERNAL_TEMP_REFRESH_INTERVAL
             )
             _LOGGER.debug(
                 "External temp listener subscribed for device %s to entity %s",
@@ -624,24 +653,23 @@ class DanfossAllyDataUpdateCoordinator(
                 entity_id,
             )
             self.hass.async_create_task(
-                self._async_handle_external_temp_change(device_id, "", entity_id)
+                self._async_handle_external_temp_change(device_id, entity_id)
             )
 
     async def _async_unload_external_temp_listeners(self) -> None:
-        """Unsubscribe from all external temperature state listeners."""
+        """Cancel all external temperature listeners and refreshes."""
         for state in self._external_temp_states.values():
-            if state.unsub_state_listener:
-                state.unsub_state_listener()
+            state.cancel()
         self._external_temp_states.clear()
 
     async def async_disable_external_temperature(self, device_id: str) -> None:
         """Send -8000 to disable external temperature on the device and remove listener."""
         _LOGGER.debug("Disabling external temperature for device %s", device_id)
 
-        # Remove listener for this device only
+        # Remove the listener and refresh timer for this device only.
         state = self._external_temp_states.pop(device_id, None)
-        if state and state.unsub_state_listener:
-            state.unsub_state_listener()
+        if state:
+            state.cancel()
 
         # Send -8000 to signal device to disable external temperature
         try:
@@ -658,14 +686,19 @@ class DanfossAllyDataUpdateCoordinator(
     async def _async_handle_external_temp_change(
         self,
         device_id: str,
-        new_state_str: str,
         entity_id: str,
+        *,
+        refresh: bool = False,
     ) -> None:
-        """Handle external temperature entity state change and send to device if needed."""
+        """Send a valid sensor reading on change or periodic refresh."""
         try:
+            current_state = self._external_temp_states.get(device_id)
+            if current_state is None or current_state.entity_id != entity_id:
+                return
+
             # Get the new state value from Home Assistant
             state = self.hass.states.get(entity_id)
-            if state is None or state.state == "unavailable":
+            if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 _LOGGER.debug(
                     "External temp entity %s is unavailable, not sending update",
                     entity_id,
@@ -681,19 +714,8 @@ class DanfossAllyDataUpdateCoordinator(
                 )
                 return
 
-            # Get current state tracking
-            current_state = self._external_temp_states.get(device_id)
-            if current_state is None:
-                current_state = ExternalTempState(
-                    entity_id=entity_id,
-                    last_sent_value=None,
-                    last_sent_at=0,
-                    unsub_state_listener=None,
-                )
-                self._external_temp_states[device_id] = current_state
-
             # Check if value has actually changed
-            if current_state.last_sent_value == temp_celsius:
+            if not refresh and current_state.last_sent_value == temp_celsius:
                 _LOGGER.debug(
                     "External temp for device %s unchanged (%.1f°C), skipping send",
                     device_id,
@@ -703,9 +725,6 @@ class DanfossAllyDataUpdateCoordinator(
 
             # Send the temperature
             await self._async_send_external_temperature(device_id, temp_celsius)
-
-            # Schedule next re-send in 30 minutes if value hasn't changed
-            self._async_schedule_external_temp_resend(device_id, temp_celsius)
 
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Error handling external temp change: %s", err)
@@ -742,36 +761,6 @@ class DanfossAllyDataUpdateCoordinator(
 
         except HomeAssistantError as err:
             _LOGGER.warning("Failed to send external temperature: %s", err)
-
-    def _async_schedule_external_temp_resend(
-        self,
-        device_id: str,
-        temp_celsius: float,
-    ) -> None:
-        """Schedule external temperature re-send in 30 minutes."""
-        from homeassistant.helpers.event import async_call_later
-
-        async def resend_callback(now: Any) -> None:  # now is datetime, not used
-            # Check if still configured
-            if device_id not in self.external_sensors_config:
-                return
-
-            # Check if value has changed
-            current_state = self._external_temp_states.get(device_id)
-            if current_state and current_state.last_sent_value == temp_celsius:
-                _LOGGER.debug(
-                    "Re-sending external temperature %.1f°C to device %s (30-min timer)",
-                    temp_celsius,
-                    device_id,
-                )
-                await self._async_send_external_temperature(device_id, temp_celsius)
-
-        # Schedule for 30 minutes from now
-        async_call_later(
-            self.hass,
-            30 * 60,  # 1800 seconds
-            resend_callback,
-        )
 
     async def async_unload_external_temp_listeners(self) -> None:
         """Public method to unload listeners."""
